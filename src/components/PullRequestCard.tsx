@@ -9,7 +9,10 @@ import {
   AlertCircle, 
   Eye, 
   EyeOff,
-  Bell
+  Bell,
+  ShieldCheck,
+  ShieldX,
+  MessageSquare
 } from 'lucide-react';
 
 interface PullRequestCardProps {
@@ -23,7 +26,7 @@ const PullRequestCard: React.FC<PullRequestCardProps> = ({
   isStaggered = true,
   onMarkAsRead
 }) => {
-  const { title, html_url, user, updated_at, draft, labels, has_new_activity, last_read_at } = pullRequest;
+  const { title, html_url, user, updated_at, draft, labels, has_new_activity, review_status } = pullRequest;
   
   const isPrOpen = pullRequest.state === 'open';
   const isPrMerged = pullRequest.merged_at !== null;
@@ -53,6 +56,38 @@ const PullRequestCard: React.FC<PullRequestCardProps> = ({
     e.stopPropagation();
     if (onMarkAsRead) {
       onMarkAsRead(pullRequest);
+    }
+  };
+  
+  const renderReviewStatus = () => {
+    if (!review_status || review_status === "NONE") {
+      return null;
+    }
+    
+    switch (review_status) {
+      case "APPROVED":
+        return (
+          <div className="flex items-center gap-1 text-green-600" title="Approved">
+            <ShieldCheck className="w-4 h-4" />
+            <span className="text-xs font-medium">Approved</span>
+          </div>
+        );
+      case "CHANGES_REQUESTED":
+        return (
+          <div className="flex items-center gap-1 text-red-500" title="Changes requested">
+            <ShieldX className="w-4 h-4" />
+            <span className="text-xs font-medium">Changes requested</span>
+          </div>
+        );
+      case "COMMENTED":
+        return (
+          <div className="flex items-center gap-1 text-blue-500" title="Reviewed with comments">
+            <MessageSquare className="w-4 h-4" />
+            <span className="text-xs font-medium">Reviewed</span>
+          </div>
+        );
+      default:
+        return null;
     }
   };
   
@@ -94,6 +129,8 @@ const PullRequestCard: React.FC<PullRequestCardProps> = ({
                 <Bell className="w-3.5 h-3.5 text-primary" />
               </div>
             )}
+            
+            {renderReviewStatus()}
             
             <div className="flex-1"></div>
             

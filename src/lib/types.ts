@@ -34,7 +34,19 @@ export interface PullRequest {
   comments_url?: string;
   last_read_at?: string | null;
   has_new_activity?: boolean;
+  reviews?: Review[];
+  review_status?: ReviewStatus;
 }
+
+export interface Review {
+  id: number;
+  user: GitHubUser;
+  state: "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" | "DISMISSED" | "PENDING";
+  submitted_at: string;
+  html_url: string;
+}
+
+export type ReviewStatus = "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" | "NONE";
 
 export interface RepositoryGroup {
   id: number;

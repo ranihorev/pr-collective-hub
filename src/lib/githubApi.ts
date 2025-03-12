@@ -1,5 +1,5 @@
 
-import { GitHubSettings, PullRequest } from "./types";
+import { GitHubSettings, PullRequest, Review, ReviewStatus } from "./types";
 
 const BASE_URL = "https://api.github.com";
 
@@ -61,7 +61,7 @@ export async function fetchPullRequests(settings: GitHubSettings): Promise<PullR
           
           const repoData = await repoResponse.json();
           
-          return {
+          const pullRequest = {
             id: item.id,
             number: item.number,
             title: item.title,
@@ -93,6 +93,9 @@ export async function fetchPullRequests(settings: GitHubSettings): Promise<PullR
             comments_count: item.comments,
             comments_url: item.comments_url,
           };
+          
+          // Fetch reviews for this PR
+          return await fetchReviewsForPullRequest(pullRequest, settings, headers);
         } catch (itemError) {
           console.error(`Error processing PR item:`, itemError);
           return null;
@@ -106,6 +109,94 @@ export async function fetchPullRequests(settings: GitHubSettings): Promise<PullR
     console.error("Error fetching pull requests:", error);
     throw error;
   }
+}
+
+async function fetchReviewsForPullRequest(
+  pullRequest: PullRequest, 
+  settings: GitHubSettings,
+  headers: Record<string, string>
+): Promise<PullRequest> {
+  try {
+    const { organization } = settings;
+    const { number } = pullRequest;
+    const repoName = pullRequest.repository.name;
+    
+    const reviewsUrl = `${BASE_URL}/repos/${organization}/${repoName}/pulls/${number}/reviews`;
+    const reviewsResponse = await fetch(reviewsUrl, { headers });
+    
+    if (!reviewsResponse.ok) {
+      console.error(`Failed to fetch reviews for PR #${number}:`, reviewsResponse.status);
+      return pullRequest;
+    }
+    
+    const reviewsData = await reviewsResponse.json();
+    
+    if (!Array.isArray(reviewsData)) {
+      console.error(`Invalid reviews data format for PR #${number}:`, reviewsData);
+      return pullRequest;
+    }
+    
+    // Map reviews to our interface
+    const reviews: Review[] = reviewsData.map((review: any) => ({
+      id: review.id,
+      user: {
+        login: review.user.login,
+        id: review.user.id,
+        avatar_url: review.user.avatar_url,
+        html_url: review.user.html_url,
+      },
+      state: review.state,
+      submitted_at: review.submitted_at,
+      html_url: review.html_url,
+    }));
+    
+    // Determine overall review status
+    const reviewStatus = determineReviewStatus(reviews);
+    
+    return {
+      ...pullRequest,
+      reviews,
+      review_status: reviewStatus,
+    };
+  } catch (error) {
+    console.error(`Error fetching reviews for PR #${pullRequest.number}:`, error);
+    return pullRequest;
+  }
+}
+
+function determineReviewStatus(reviews: Review[]): ReviewStatus {
+  if (reviews.length === 0) {
+    return "NONE";
+  }
+  
+  // Get most recent review from each user to determine latest state
+  const userLatestReviews = new Map<number, Review>();
+  
+  reviews.forEach(review => {
+    const userId = review.user.id;
+    const existingReview = userLatestReviews.get(userId);
+    
+    if (!existingReview || new Date(review.submitted_at) > new Date(existingReview.submitted_at)) {
+      userLatestReviews.set(userId, review);
+    }
+  });
+  
+  // Check if any latest review is requesting changes
+  const latestReviews = Array.from(userLatestReviews.values());
+  
+  if (latestReviews.some(review => review.state === "CHANGES_REQUESTED")) {
+    return "CHANGES_REQUESTED";
+  }
+  
+  if (latestReviews.some(review => review.state === "APPROVED")) {
+    return "APPROVED";
+  }
+  
+  if (latestReviews.some(review => review.state === "COMMENTED")) {
+    return "COMMENTED";
+  }
+  
+  return "NONE";
 }
 
 export function groupPullRequestsByRepository(pullRequests: PullRequest[]) {

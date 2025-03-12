@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   fetchPullRequests, 
@@ -9,14 +8,15 @@ import {
 import { 
   GitHubSettings, 
   PullRequest, 
-  RepositoryGroup,
+  RepositoryGroup as RepoGroup,
   AuthorGroup,
   GroupingOption,
   SortingOption
 } from '../lib/types';
-import RepositoryGroup from './RepositoryGroup';
 import EmptyState from './EmptyState';
 import UserFilters from './UserFilters';
+import RepositoryGroup from './RepositoryGroup';
+import PullRequestCard from './PullRequestCard';
 import { 
   GitPullRequest,
   Users,
@@ -47,7 +47,7 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
   const { toast } = useToast();
   const [settings, setSettings] = useState<GitHubSettings>(initialSettings);
   const [pullRequests, setPullRequests] = useState<PullRequest[]>([]);
-  const [repositoryGroups, setRepositoryGroups] = useState<RepositoryGroup[]>([]);
+  const [repositoryGroups, setRepositoryGroups] = useState<RepoGroup[]>([]);
   const [authorGroups, setAuthorGroups] = useState<AuthorGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -136,7 +136,6 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
     setFilteredUsers(users);
     setShowSettings(false);
     
-    // Save settings to localStorage
     localStorage.setItem('github-inbox-settings', JSON.stringify(newSettings));
     
     fetchData();

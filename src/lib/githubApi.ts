@@ -1,3 +1,4 @@
+
 import { GitHubSettings, PullRequest } from "./types";
 
 const BASE_URL = "https://api.github.com";
@@ -18,9 +19,9 @@ export async function fetchPullRequests(settings: GitHubSettings): Promise<PullR
       headers["Authorization"] = `Bearer ${token}`;
     }
     
-    // Create a single query with all users
+    // Create the author query without parentheses
     const authorQuery = users.map(user => `author:${user}`).join(" ");
-    const query = `org:${organization} is:pr is:open (${authorQuery})`;
+    const query = `org:${organization} is:pr is:open ${authorQuery}`;
     const url = `${BASE_URL}/search/issues?q=${encodeURIComponent(query)}&per_page=100`;
     
     console.log(`Fetching PRs with URL: ${url}`);

@@ -1,12 +1,30 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React, { useEffect, useState } from 'react';
+import GitHubInbox from '@/components/GitHubInbox';
+import { GitHubSettings } from '@/lib/types';
 
 const Index = () => {
+  const [savedSettings, setSavedSettings] = useState<GitHubSettings | undefined>();
+  
+  useEffect(() => {
+    const loadSettings = () => {
+      const saved = localStorage.getItem('github-inbox-settings');
+      if (saved) {
+        try {
+          const settings = JSON.parse(saved);
+          setSavedSettings(settings);
+        } catch (error) {
+          console.error('Failed to parse saved settings', error);
+        }
+      }
+    };
+    
+    loadSettings();
+  }, []);
+  
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background">
+      <GitHubInbox initialSettings={savedSettings} />
     </div>
   );
 };

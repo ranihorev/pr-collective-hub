@@ -1,0 +1,117 @@
+
+import React from 'react';
+import { formatDate } from '../lib/githubApi';
+import { PullRequest } from '../lib/types';
+import { GitPullRequest, GitMerge, Clock, AlertCircle } from 'lucide-react';
+
+interface PullRequestCardProps {
+  pullRequest: PullRequest;
+  isStaggered?: boolean;
+}
+
+const PullRequestCard: React.FC<PullRequestCardProps> = ({ 
+  pullRequest,
+  isStaggered = true
+}) => {
+  const { title, html_url, user, updated_at, draft, labels } = pullRequest;
+  
+  const isPrOpen = pullRequest.state === 'open';
+  const isPrMerged = pullRequest.merged_at !== null;
+  
+  const statusIcon = () => {
+    if (draft) return <AlertCircle className="w-4 h-4 text-muted-foreground" />;
+    if (isPrMerged) return <GitMerge className="w-4 h-4 text-github-merged" />;
+    return <GitPullRequest className="w-4 h-4 text-github-pull" />;
+  };
+  
+  const statusText = () => {
+    if (draft) return 'Draft';
+    if (isPrMerged) return 'Merged';
+    if (isPrOpen) return 'Open';
+    return 'Closed';
+  };
+  
+  const statusClass = () => {
+    if (draft) return 'text-muted-foreground';
+    if (isPrMerged) return 'text-github-merged';
+    if (isPrOpen) return 'text-github-open';
+    return 'text-github-closed';
+  };
+  
+  return (
+    <a 
+      href={html_url} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className={`
+        block p-5 rounded-xl bg-white border border-border/50 shadow-sm
+        hover:shadow-md transition-all duration-300 ease-in-out
+        hover:scale-[1.01] focus:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-primary/20
+        ${isStaggered ? 'stagger-item animate-fade-in' : ''}
+      `}
+    >
+      <div className="flex items-start gap-3">
+        <div className="flex-shrink-0">
+          <img 
+            src={user.avatar_url} 
+            alt={user.login}
+            className="w-8 h-8 rounded-full object-cover"
+          />
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="flex items-center">
+              {statusIcon()}
+              <span className={`text-sm font-medium ml-1 ${statusClass()}`}>
+                {statusText()}
+              </span>
+            </div>
+            
+            <span className="text-muted-foreground text-sm">#{pullRequest.number}</span>
+            
+            <div className="flex-1"></div>
+            
+            <div className="flex items-center text-muted-foreground">
+              <Clock className="w-3 h-3 mr-1" />
+              <span className="text-xs">{formatDate(updated_at)}</span>
+            </div>
+          </div>
+          
+          <h3 className="font-medium text-foreground leading-tight mb-2 truncate">
+            {title}
+          </h3>
+          
+          <div className="flex items-center text-sm text-muted-foreground">
+            <span>by </span>
+            <span className="font-medium ml-1">{user.login}</span>
+          </div>
+          
+          {labels.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-3">
+              {labels.slice(0, 3).map(label => (
+                <span 
+                  key={label.id}
+                  className="inline-flex px-2 py-0.5 text-xs rounded-full"
+                  style={{ 
+                    backgroundColor: `#${label.color}20`, 
+                    color: `#${label.color}` 
+                  }}
+                >
+                  {label.name}
+                </span>
+              ))}
+              {labels.length > 3 && (
+                <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-secondary text-secondary-foreground">
+                  +{labels.length - 3}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </a>
+  );
+};
+
+export default PullRequestCard;

@@ -1,4 +1,3 @@
-
 import { GitHubSettings, PullRequest } from "./types";
 
 const BASE_URL = "https://api.github.com";
@@ -16,76 +15,108 @@ export async function fetchPullRequests(settings: GitHubSettings): Promise<PullR
     };
     
     if (token) {
-      headers["Authorization"] = `token ${token}`;
+      headers["Authorization"] = `Bearer ${token}`;
     }
     
     // Instead of combining all users in one query, we'll fetch for each user individually
     // and then combine the results
     const allPullRequests: PullRequest[] = [];
+    let hasErrors = false;
     
     // Fetch PRs for each user separately
     for (const user of users) {
-      const query = `org:${organization} author:${user} is:pr is:open`;
-      const url = `${BASE_URL}/search/issues?q=${encodeURIComponent(query)}&per_page=100`;
-      
-      const response = await fetch(url, { headers });
-      
-      if (!response.ok) {
-        console.error(`GitHub API error for user ${user}:`, response.status, response.statusText);
-        continue; // Skip this user but continue with others
+      try {
+        // Use simpler query format to avoid complexity issues
+        const query = `org:${organization}+author:${user}+is:pr+is:open`;
+        const url = `${BASE_URL}/search/issues?q=${encodeURIComponent(query)}&per_page=100`;
+        
+        console.log(`Fetching PRs for ${user} with URL: ${url}`);
+        
+        const response = await fetch(url, { headers });
+        const responseText = await response.text();
+        
+        if (!response.ok) {
+          console.error(`GitHub API error for user ${user}:`, response.status, response.statusText);
+          console.error(`Response body:`, responseText);
+          hasErrors = true;
+          continue; // Skip this user but continue with others
+        }
+        
+        // Parse the response text into JSON
+        const data = JSON.parse(responseText);
+        
+        if (!data.items || !Array.isArray(data.items)) {
+          console.error(`Invalid response format for user ${user}:`, data);
+          continue;
+        }
+        
+        console.log(`Found ${data.items.length} PRs for user ${user}`);
+        
+        // Process pull requests for this user
+        const userPullRequests = await Promise.all(
+          data.items.map(async (item: any) => {
+            try {
+              // Extract repository info from repository_url
+              const repoUrl = item.repository_url;
+              
+              console.log(`Fetching repo data from: ${repoUrl}`);
+              
+              const repoResponse = await fetch(repoUrl, { headers });
+              
+              if (!repoResponse.ok) {
+                console.error(`Failed to fetch repo data for PR #${item.number}:`, repoResponse.status);
+                return null;
+              }
+              
+              const repoData = await repoResponse.json();
+              
+              return {
+                id: item.id,
+                number: item.number,
+                title: item.title,
+                html_url: item.html_url,
+                state: item.state,
+                created_at: item.created_at,
+                updated_at: item.updated_at,
+                closed_at: item.closed_at,
+                merged_at: item.pull_request?.merged_at || null,
+                draft: item.draft || false,
+                user: {
+                  login: item.user.login,
+                  id: item.user.id,
+                  avatar_url: item.user.avatar_url,
+                  html_url: item.user.html_url,
+                },
+                repository: {
+                  id: repoData.id,
+                  name: repoData.name,
+                  full_name: repoData.full_name,
+                  html_url: repoData.html_url,
+                  description: repoData.description,
+                },
+                labels: item.labels ? item.labels.map((label: any) => ({
+                  id: label.id,
+                  name: label.name,
+                  color: label.color,
+                })) : [],
+              };
+            } catch (itemError) {
+              console.error(`Error processing PR item:`, itemError);
+              return null;
+            }
+          })
+        );
+        
+        // Filter out any null values (from failed requests) and add to overall results
+        allPullRequests.push(...userPullRequests.filter(Boolean));
+      } catch (userError) {
+        console.error(`Error fetching PRs for user ${user}:`, userError);
+        hasErrors = true;
       }
-      
-      const data = await response.json();
-      
-      // Process pull requests for this user
-      const userPullRequests = await Promise.all(
-        data.items.map(async (item: any) => {
-          // Extract repository info from repository_url
-          const repoUrl = item.repository_url;
-          const repoResponse = await fetch(repoUrl, { headers });
-          
-          if (!repoResponse.ok) {
-            console.error(`Failed to fetch repo data for PR #${item.number}:`, repoResponse.status);
-            return null;
-          }
-          
-          const repoData = await repoResponse.json();
-          
-          return {
-            id: item.id,
-            number: item.number,
-            title: item.title,
-            html_url: item.html_url,
-            state: item.state,
-            created_at: item.created_at,
-            updated_at: item.updated_at,
-            closed_at: item.closed_at,
-            merged_at: item.pull_request?.merged_at || null,
-            draft: item.draft || false,
-            user: {
-              login: item.user.login,
-              id: item.user.id,
-              avatar_url: item.user.avatar_url,
-              html_url: item.user.html_url,
-            },
-            repository: {
-              id: repoData.id,
-              name: repoData.name,
-              full_name: repoData.full_name,
-              html_url: repoData.html_url,
-              description: repoData.description,
-            },
-            labels: item.labels.map((label: any) => ({
-              id: label.id,
-              name: label.name,
-              color: label.color,
-            })),
-          };
-        })
-      );
-      
-      // Filter out any null values (from failed requests) and add to overall results
-      allPullRequests.push(...userPullRequests.filter(Boolean));
+    }
+    
+    if (hasErrors && allPullRequests.length === 0) {
+      throw new Error(`Failed to fetch pull requests for all users in ${organization}`);
     }
     
     return allPullRequests;

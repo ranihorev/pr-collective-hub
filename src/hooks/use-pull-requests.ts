@@ -18,7 +18,8 @@ import {
 import { 
   getReadStatusFromStorage,
   applyReadStatus,
-  markPullRequestAsRead
+  markPullRequestAsRead,
+  togglePullRequestReadStatus
 } from '@/lib/readStatusService';
 
 export function usePullRequests(
@@ -124,18 +125,19 @@ export function usePullRequests(
     }
   }, [settings, sorting, readStatuses, toast]);
   
-  // Mark a single PR as read
+  // Mark a single PR as read or unread (toggle)
   const handleMarkAsRead = useCallback((pr: PullRequest) => {
-    const updatedReadStatuses = markPullRequestAsRead(pr, readStatuses);
+    const updatedReadStatuses = togglePullRequestReadStatus(pr, readStatuses);
     setReadStatuses(updatedReadStatuses);
     
     // Update the PullRequest in state
     const updatedPullRequests = pullRequests.map(p => {
       if (p.id === pr.id) {
+        const isNowRead = !hasNewActivity(p, updatedReadStatuses[p.id]);
         return {
           ...p,
-          last_read_at: new Date().toISOString(),
-          has_new_activity: false
+          last_read_at: isNowRead ? new Date().toISOString() : null,
+          has_new_activity: !isNowRead
         };
       }
       return p;
@@ -156,8 +158,8 @@ export function usePullRequests(
     setAuthorGroups(updatedAuthorGroups);
     
     toast({
-      title: "Marked as read",
-      description: `"${pr.title}" is now marked as read`
+      title: pr.has_new_activity ? "Marked as read" : "Marked as unread",
+      description: `"${pr.title}" is now marked as ${pr.has_new_activity ? "read" : "unread"}`
     });
   }, [pullRequests, readStatuses, sorting, toast]);
   
@@ -219,3 +221,6 @@ export function usePullRequests(
     unreadCount
   };
 }
+
+// Import hasNewActivity for local use
+import { hasNewActivity } from '@/lib/readStatusService';

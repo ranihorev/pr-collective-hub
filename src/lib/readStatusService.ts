@@ -1,4 +1,3 @@
-
 import { PullRequest, ReadStatus } from "./types";
 
 const READ_STATUS_KEY = "github-inbox-read-status";
@@ -35,6 +34,29 @@ export function markPullRequestAsRead(
     lastReadAt: new Date().toISOString(),
     commentsReadCount: commentsCount
   };
+  
+  saveReadStatusToStorage(updatedReadStatuses);
+  return updatedReadStatuses;
+}
+
+export function togglePullRequestReadStatus(
+  pr: PullRequest,
+  readStatuses: Record<number, ReadStatus>
+): Record<number, ReadStatus> {
+  const updatedReadStatuses = { ...readStatuses };
+  
+  // If PR is currently marked as read (no new activity), mark it as unread
+  if (!hasNewActivity(pr, readStatuses[pr.id])) {
+    // Delete the read status to mark it as unread
+    delete updatedReadStatuses[pr.id];
+  } else {
+    // Otherwise mark it as read
+    updatedReadStatuses[pr.id] = {
+      prId: pr.id,
+      lastReadAt: new Date().toISOString(),
+      commentsReadCount: pr.comments_count || 0
+    };
+  }
   
   saveReadStatusToStorage(updatedReadStatuses);
   return updatedReadStatuses;

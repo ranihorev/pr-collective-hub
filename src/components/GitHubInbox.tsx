@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useGitHubSettings } from '@/hooks/use-github-settings';
 import { usePullRequests } from '@/hooks/use-pull-requests';
@@ -32,7 +31,7 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
   const [sorting, setSorting] = useState<SortingOption>('updated');
   const [filteredUsers, setFilteredUsers] = useState<string[]>([]);
   const [showSettings, setShowSettings] = useState<boolean>(
-    !settings.organization || settings.users.length === 0
+    !settings.organization || settings.users.length === 0 || !settings.token
   );
   const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(false);
   

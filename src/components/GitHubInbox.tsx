@@ -75,6 +75,11 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
     setReadStatuses(getReadStatusFromStorage());
   }, []);
   
+  // Move the filteredPullRequests declaration here, before it's used
+  const filteredPullRequests = pullRequests.filter(pr => 
+    filteredUsers.includes(pr.user.login)
+  ).filter(pr => !showUnreadOnly || pr.has_new_activity);
+  
   const fetchData = useCallback(async () => {
     if (!settings.organization || settings.users.length === 0) {
       return;
@@ -211,7 +216,7 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
       title: "All marked as read",
       description: `Marked ${filteredPullRequests.length} pull requests as read`
     });
-  }, [pullRequests, readStatuses, filteredUsers, filteredPullRequests, sorting, toast]);
+  }, [pullRequests, readStatuses, filteredUsers, sorting, toast, filteredPullRequests]);
   
   const handleSettingsSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -240,14 +245,15 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
     fetchData();
   };
   
-  let filteredPullRequests = pullRequests.filter(pr => 
-    filteredUsers.includes(pr.user.login)
-  );
+  // Remove this duplicate declaration
+  // let filteredPullRequests = pullRequests.filter(pr => 
+  //   filteredUsers.includes(pr.user.login)
+  // );
   
-  // Apply unread filter if enabled
-  if (showUnreadOnly) {
-    filteredPullRequests = filteredPullRequests.filter(pr => pr.has_new_activity);
-  }
+  // // Apply unread filter if enabled
+  // if (showUnreadOnly) {
+  //   filteredPullRequests = filteredPullRequests.filter(pr => pr.has_new_activity);
+  // }
   
   const filteredRepositoryGroups = repositoryGroups.map(group => ({
     ...group,

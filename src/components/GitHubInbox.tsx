@@ -129,7 +129,7 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
     const newSettings = {
       organization,
       users,
-      token: token || undefined,
+      token: token || '',
     };
     
     setSettings(newSettings);

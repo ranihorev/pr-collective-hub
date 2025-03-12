@@ -1,51 +1,21 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { 
-  fetchPullRequests, 
-  groupPullRequestsByRepository, 
-  groupPullRequestsByAuthor,
-  sortPullRequests
-} from '../lib/githubApi';
-import { 
-  getReadStatusFromStorage,
-  markPullRequestAsRead,
-  applyReadStatus
-} from '../lib/readStatusService';
-import { 
-  GitHubSettings, 
-  PullRequest, 
-  RepositoryGroup as RepoGroup,
-  AuthorGroup,
-  GroupingOption,
-  SortingOption,
-  ReadStatus
-} from '../lib/types';
+import React, { useState, useEffect } from 'react';
+import { useGitHubSettings } from '@/hooks/use-github-settings';
+import { usePullRequests } from '@/hooks/use-pull-requests';
+import { GitHubSettings as GitHubSettingsType, GroupingOption, SortingOption } from '@/lib/types';
 import EmptyState from './EmptyState';
 import UserFilters from './UserFilters';
 import RepositoryGroup from './RepositoryGroup';
-import PullRequestCard from './PullRequestCard';
-import { 
-  GitPullRequest,
-  Users,
-  SlidersHorizontal,
-  Clock,
-  Calendar,
-  Settings,
-  RefreshCw,
-  UserSquare2,
-  FolderGit2,
-  Eye,
-  EyeOff,
-  Bell
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
+import AuthorGroupList from './AuthorGroupList';
+import GitHubSettings from './GitHubSettings';
+import GitHubHeader from './GitHubHeader';
+import GitHubFilters from './GitHubFilters';
 
 interface GitHubInboxProps {
-  initialSettings?: GitHubSettings;
+  initialSettings?: GitHubSettingsType;
 }
 
-const DEFAULT_SETTINGS: GitHubSettings = {
+const DEFAULT_SETTINGS: GitHubSettingsType = {
   organization: '',
   users: [],
   token: '',
@@ -54,232 +24,58 @@ const DEFAULT_SETTINGS: GitHubSettings = {
 const GitHubInbox: React.FC<GitHubInboxProps> = ({ 
   initialSettings = DEFAULT_SETTINGS 
 }) => {
-  const { toast } = useToast();
-  const [settings, setSettings] = useState<GitHubSettings>(initialSettings);
-  const [pullRequests, setPullRequests] = useState<PullRequest[]>([]);
-  const [repositoryGroups, setRepositoryGroups] = useState<RepoGroup[]>([]);
-  const [authorGroups, setAuthorGroups] = useState<AuthorGroup[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Settings state
+  const { settings, updateSettings } = useGitHubSettings(initialSettings);
+  
+  // UI state
   const [grouping, setGrouping] = useState<GroupingOption>('repository');
   const [sorting, setSorting] = useState<SortingOption>('updated');
   const [filteredUsers, setFilteredUsers] = useState<string[]>([]);
   const [showSettings, setShowSettings] = useState<boolean>(
     !settings.organization || settings.users.length === 0
   );
-  const [readStatuses, setReadStatuses] = useState<Record<number, ReadStatus>>({});
   const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(false);
   
-  // Load read statuses from localStorage on mount
+  // Initialize filteredUsers from settings
   useEffect(() => {
-    setReadStatuses(getReadStatusFromStorage());
-  }, []);
-  
-  // Move the filteredPullRequests declaration here, before it's used
-  const filteredPullRequests = pullRequests.filter(pr => 
-    filteredUsers.includes(pr.user.login)
-  ).filter(pr => !showUnreadOnly || pr.has_new_activity);
-  
-  const fetchData = useCallback(async () => {
-    if (!settings.organization || settings.users.length === 0) {
-      return;
+    if (filteredUsers.length === 0 && settings.users.length > 0) {
+      setFilteredUsers(settings.users);
     }
-
-    setLoading(true);
-    setError(null);
-    
-    try {
-      let prs = await fetchPullRequests(settings);
-      
-      // Apply read status to pull requests
-      prs = applyReadStatus(prs, readStatuses);
-      setPullRequests(prs);
-      
-      const repoGroups = groupPullRequestsByRepository(
-        sortPullRequests(prs, sorting)
-      );
-      setRepositoryGroups(repoGroups);
-      
-      const userGroups = groupPullRequestsByAuthor(
-        sortPullRequests(prs, sorting)
-      );
-      setAuthorGroups(userGroups);
-      
-      if (filteredUsers.length === 0) {
-        setFilteredUsers(settings.users);
-      }
-      
-      const unreadCount = prs.filter(pr => pr.has_new_activity).length;
-      
-      if (prs.length === 0) {
-        toast({
-          title: "No pull requests found",
-          description: "Try adding more users or check your organization name."
-        });
-      } else {
-        toast({
-          title: `${prs.length} pull requests found`,
-          description: unreadCount > 0 ? `${unreadCount} with new activity` : "All PRs are read"
-        });
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setError(errorMessage);
-      toast({
-        title: "Failed to fetch pull requests",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [settings, sorting, readStatuses, filteredUsers, toast]);
+  }, [settings.users, filteredUsers]);
   
+  // Pull requests data and operations
+  const {
+    loading,
+    error,
+    fetchData,
+    handleMarkAsRead,
+    handleMarkAllAsRead,
+    filteredPullRequests,
+    filteredRepositoryGroups,
+    filteredAuthorGroups,
+    uniqueUsers,
+    unreadCount
+  } = usePullRequests(settings, sorting, filteredUsers, showUnreadOnly);
+  
+  // Fetch data when settings change
   useEffect(() => {
     if (settings.organization && settings.users.length > 0) {
       fetchData();
     }
-  }, [fetchData]);
+  }, [settings, fetchData]);
   
-  const handleMarkAsRead = useCallback((pr: PullRequest) => {
-    const updatedReadStatuses = markPullRequestAsRead(pr, readStatuses);
-    setReadStatuses(updatedReadStatuses);
-    
-    // Update the PullRequest in state
-    const updatedPullRequests = pullRequests.map(p => {
-      if (p.id === pr.id) {
-        return {
-          ...p,
-          last_read_at: new Date().toISOString(),
-          has_new_activity: false
-        };
-      }
-      return p;
-    });
-    
-    setPullRequests(updatedPullRequests);
-    
-    // Update repository groups
-    const updatedRepoGroups = groupPullRequestsByRepository(
-      sortPullRequests(updatedPullRequests, sorting)
-    );
-    setRepositoryGroups(updatedRepoGroups);
-    
-    // Update author groups
-    const updatedAuthorGroups = groupPullRequestsByAuthor(
-      sortPullRequests(updatedPullRequests, sorting)
-    );
-    setAuthorGroups(updatedAuthorGroups);
-    
-    toast({
-      title: "Marked as read",
-      description: `"${pr.title}" is now marked as read`
-    });
-  }, [pullRequests, readStatuses, sorting, toast]);
-  
-  const handleMarkAllAsRead = useCallback(() => {
-    let updatedReadStatuses = { ...readStatuses };
-    
-    // Mark all filtered PRs as read
-    filteredPullRequests.forEach(pr => {
-      updatedReadStatuses = markPullRequestAsRead(pr, updatedReadStatuses, pr.comments_count);
-    });
-    
-    setReadStatuses(updatedReadStatuses);
-    
-    // Update the PullRequests in state
-    const updatedPullRequests = pullRequests.map(p => {
-      if (filteredUsers.includes(p.user.login)) {
-        return {
-          ...p,
-          last_read_at: new Date().toISOString(),
-          has_new_activity: false
-        };
-      }
-      return p;
-    });
-    
-    setPullRequests(updatedPullRequests);
-    
-    // Update repository groups and author groups
-    const updatedRepoGroups = groupPullRequestsByRepository(
-      sortPullRequests(updatedPullRequests, sorting)
-    );
-    setRepositoryGroups(updatedRepoGroups);
-    
-    const updatedAuthorGroups = groupPullRequestsByAuthor(
-      sortPullRequests(updatedPullRequests, sorting)
-    );
-    setAuthorGroups(updatedAuthorGroups);
-    
-    toast({
-      title: "All marked as read",
-      description: `Marked ${filteredPullRequests.length} pull requests as read`
-    });
-  }, [pullRequests, readStatuses, filteredUsers, sorting, toast, filteredPullRequests]);
-  
-  const handleSettingsSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const organization = formData.get('organization') as string;
-    const usersText = formData.get('users') as string;
-    const token = formData.get('token') as string;
-    
-    const users = usersText
-      .split(',')
-      .map(user => user.trim())
-      .filter(Boolean);
-    
-    const newSettings = {
-      organization,
-      users,
-      token: token || '',
-    };
-    
-    setSettings(newSettings);
-    setFilteredUsers(users);
+  const handleSettingsSubmit = (newSettings: GitHubSettingsType) => {
+    updateSettings(newSettings);
+    setFilteredUsers(newSettings.users);
     setShowSettings(false);
-    
-    localStorage.setItem('github-inbox-settings', JSON.stringify(newSettings));
-    
-    fetchData();
   };
-  
-  // Remove this duplicate declaration
-  // let filteredPullRequests = pullRequests.filter(pr => 
-  //   filteredUsers.includes(pr.user.login)
-  // );
-  
-  // // Apply unread filter if enabled
-  // if (showUnreadOnly) {
-  //   filteredPullRequests = filteredPullRequests.filter(pr => pr.has_new_activity);
-  // }
-  
-  const filteredRepositoryGroups = repositoryGroups.map(group => ({
-    ...group,
-    pullRequests: group.pullRequests.filter(pr => {
-      const userMatch = filteredUsers.includes(pr.user.login);
-      const unreadMatch = !showUnreadOnly || pr.has_new_activity;
-      return userMatch && unreadMatch;
-    }),
-  })).filter(group => group.pullRequests.length > 0);
-  
-  const filteredAuthorGroups = authorGroups
-    .filter(group => filteredUsers.includes(group.user.login))
-    .map(group => ({
-      ...group,
-      pullRequests: group.pullRequests.filter(pr => !showUnreadOnly || pr.has_new_activity)
-    }))
-    .filter(group => group.pullRequests.length > 0);
   
   const handleRefresh = () => {
     fetchData();
   };
   
-  const unreadCount = filteredPullRequests.filter(pr => pr.has_new_activity).length;
-  
   const renderContent = () => {
-    if (loading && pullRequests.length === 0) {
+    if (loading && filteredPullRequests.length === 0) {
       return <EmptyState type="loading" />;
     }
     
@@ -329,280 +125,56 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
       );
     } else {
       return (
-        <div className="space-y-8">
-          {filteredAuthorGroups.map(group => (
-            <div key={group.user.id} className="animate-slide-in stagger-item">
-              <div className="flex items-center gap-2 mb-4">
-                <img 
-                  src={group.user.avatar_url} 
-                  alt={group.user.login}
-                  className="w-6 h-6 rounded-full"
-                />
-                <h2 className="font-medium">{group.user.login}</h2>
-                <span className={`text-sm px-2 py-0.5 rounded-full ${
-                  group.pullRequests.some(pr => pr.has_new_activity) 
-                    ? 'bg-primary text-white' 
-                    : 'bg-secondary'
-                }`}>
-                  {group.pullRequests.length}
-                </span>
-              </div>
-              <div className="space-y-3">
-                {sortPullRequests(group.pullRequests, sorting).map(pr => (
-                  <PullRequestCard 
-                    key={pr.id} 
-                    pullRequest={pr} 
-                    onMarkAsRead={handleMarkAsRead} 
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        <AuthorGroupList 
+          groups={filteredAuthorGroups} 
+          sorting={sorting}
+          onMarkAsRead={handleMarkAsRead}
+        />
       );
     }
   };
-  
-  const uniqueUsers = Array.from(
-    new Map(
-      pullRequests.map(pr => [pr.user.login, pr.user])
-    ).values()
-  );
   
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="flex flex-col">
         <header className="mb-8">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center">
-              <GitPullRequest className="w-8 h-8 text-primary mr-3" />
-              <h1 className="text-2xl font-semibold">GitHub Inbox</h1>
-              {unreadCount > 0 && (
-                <div className="ml-3 bg-primary text-white text-sm font-medium rounded-full px-2 py-0.5 flex items-center">
-                  <Bell className="w-3 h-3 mr-1" />
-                  {unreadCount}
-                </div>
-              )}
-            </div>
-            
-            <div className="flex items-center gap-3">
-              {filteredPullRequests.length > 0 && (
-                <button
-                  onClick={handleMarkAllAsRead}
-                  className={cn(
-                    "flex items-center gap-1 px-3 py-1 rounded-md text-sm",
-                    "bg-secondary hover:bg-secondary/80 focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  )}
-                  aria-label="Mark all as read"
-                >
-                  <Eye className="w-4 h-4" />
-                  <span>Mark all read</span>
-                </button>
-              )}
-              
-              <button
-                onClick={handleRefresh}
-                disabled={loading}
-                className={cn(
-                  "p-2 rounded-full transition-all duration-200",
-                  "hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/20",
-                  loading && "animate-spin"
-                )}
-                aria-label="Refresh"
-              >
-                <RefreshCw className="w-5 h-5" />
-              </button>
-              
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className={cn(
-                  "p-2 rounded-full transition-all duration-200",
-                  "hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-primary/20",
-                  showSettings && "bg-secondary"
-                )}
-                aria-label="Settings"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
+          <GitHubHeader 
+            unreadCount={unreadCount}
+            hasFilteredPullRequests={filteredPullRequests.length > 0}
+            loading={loading}
+            showSettings={showSettings}
+            onMarkAllAsRead={handleMarkAllAsRead}
+            onRefresh={handleRefresh}
+            onToggleSettings={() => setShowSettings(!showSettings)}
+          />
           
           {showSettings && (
-            <div className="bg-card rounded-xl p-6 shadow-sm border border-border/50 mb-6 animate-fade-in">
-              <h2 className="text-lg font-medium mb-4">GitHub Settings</h2>
-              <form onSubmit={handleSettingsSubmit} className="space-y-4">
-                <div>
-                  <label htmlFor="organization" className="block text-sm font-medium mb-1">
-                    Organization Name
-                  </label>
-                  <input
-                    id="organization"
-                    name="organization"
-                    type="text"
-                    defaultValue={settings.organization}
-                    required
-                    placeholder="e.g., github"
-                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="users" className="block text-sm font-medium mb-1">
-                    GitHub Usernames
-                  </label>
-                  <textarea
-                    id="users"
-                    name="users"
-                    defaultValue={settings.users.join(', ')}
-                    required
-                    placeholder="e.g., user1, user2, user3"
-                    rows={3}
-                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Comma-separated list of GitHub usernames
-                  </p>
-                </div>
-                
-                <div>
-                  <label htmlFor="token" className="block text-sm font-medium mb-1">
-                    GitHub Token (Optional)
-                  </label>
-                  <input
-                    id="token"
-                    name="token"
-                    type="password"
-                    defaultValue={settings.token}
-                    placeholder="GitHub personal access token"
-                    className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    A token increases API rate limits and allows access to private repositories
-                  </p>
-                </div>
-                
-                <div className="flex justify-end gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowSettings(false)}
-                    className="px-4 py-2 border border-input rounded-lg text-muted-foreground hover:bg-secondary transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
-                  >
-                    Save Settings
-                  </button>
-                </div>
-              </form>
-            </div>
+            <GitHubSettings 
+              settings={settings}
+              onSubmit={handleSettingsSubmit}
+              onCancel={() => setShowSettings(false)}
+            />
           )}
           
-          {pullRequests.length > 0 && !showSettings && (
-            <div className="glass rounded-xl p-4 flex flex-wrap gap-4 items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">Group By:</span>
-                </div>
-                
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setGrouping('repository')}
-                    className={cn(
-                      "px-3 py-1 rounded-full text-sm flex items-center gap-1",
-                      grouping === 'repository' 
-                        ? "bg-primary text-white"
-                        : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                    )}
-                  >
-                    <FolderGit2 className="w-3.5 h-3.5 mr-1" />
-                    Repository
-                  </button>
-                  <button
-                    onClick={() => setGrouping('author')}
-                    className={cn(
-                      "px-3 py-1 rounded-full text-sm flex items-center gap-1",
-                      grouping === 'author' 
-                        ? "bg-primary text-white"
-                        : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                    )}
-                  >
-                    <UserSquare2 className="w-3.5 h-3.5 mr-1" />
-                    Author
-                  </button>
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">Sort By:</span>
-                </div>
-                
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setSorting('updated')}
-                    className={cn(
-                      "px-3 py-1 rounded-full text-sm flex items-center gap-1",
-                      sorting === 'updated' 
-                        ? "bg-primary text-white"
-                        : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                    )}
-                  >
-                    <Clock className="w-3.5 h-3.5 mr-1" />
-                    Updated
-                  </button>
-                  <button
-                    onClick={() => setSorting('created')}
-                    className={cn(
-                      "px-3 py-1 rounded-full text-sm flex items-center gap-1",
-                      sorting === 'created' 
-                        ? "bg-primary text-white"
-                        : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                    )}
-                  >
-                    <Calendar className="w-3.5 h-3.5 mr-1" />
-                    Created
-                  </button>
-                </div>
-              </div>
-            </div>
+          {filteredPullRequests.length > 0 && !showSettings && (
+            <GitHubFilters
+              grouping={grouping}
+              sorting={sorting}
+              showUnreadOnly={showUnreadOnly}
+              onGroupingChange={setGrouping}
+              onSortingChange={setSorting}
+              onShowUnreadOnlyChange={setShowUnreadOnly}
+            />
           )}
         </header>
         
-        {pullRequests.length > 0 && !showSettings && (
+        {filteredPullRequests.length > 0 && !showSettings && (
           <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <UserFilters 
-                users={uniqueUsers}
-                selectedUsers={filteredUsers}
-                onChange={setFilteredUsers}
-              />
-              
-              <button
-                onClick={() => setShowUnreadOnly(!showUnreadOnly)}
-                className={cn(
-                  "flex items-center gap-1 px-3 py-1 rounded-md text-sm transition-colors",
-                  showUnreadOnly
-                    ? "bg-primary text-white hover:bg-primary/90"
-                    : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-                )}
-              >
-                {showUnreadOnly ? (
-                  <>
-                    <Bell className="w-3.5 h-3.5 mr-1" />
-                    Unread only
-                  </>
-                ) : (
-                  <>
-                    <Eye className="w-3.5 h-3.5 mr-1" />
-                    Show all
-                  </>
-                )}
-              </button>
-            </div>
+            <UserFilters 
+              users={uniqueUsers}
+              selectedUsers={filteredUsers}
+              onChange={setFilteredUsers}
+            />
           </div>
         )}
         

@@ -2,18 +2,28 @@
 import React from 'react';
 import { formatDate } from '../lib/githubApi';
 import { PullRequest } from '../lib/types';
-import { GitPullRequest, GitMerge, Clock, AlertCircle } from 'lucide-react';
+import { 
+  GitPullRequest, 
+  GitMerge, 
+  Clock, 
+  AlertCircle, 
+  Eye, 
+  EyeOff,
+  Bell
+} from 'lucide-react';
 
 interface PullRequestCardProps {
   pullRequest: PullRequest;
   isStaggered?: boolean;
+  onMarkAsRead?: (pr: PullRequest) => void;
 }
 
 const PullRequestCard: React.FC<PullRequestCardProps> = ({ 
   pullRequest,
-  isStaggered = true
+  isStaggered = true,
+  onMarkAsRead
 }) => {
-  const { title, html_url, user, updated_at, draft, labels } = pullRequest;
+  const { title, html_url, user, updated_at, draft, labels, has_new_activity, last_read_at } = pullRequest;
   
   const isPrOpen = pullRequest.state === 'open';
   const isPrMerged = pullRequest.merged_at !== null;
@@ -38,6 +48,14 @@ const PullRequestCard: React.FC<PullRequestCardProps> = ({
     return 'text-github-closed';
   };
   
+  const handleMarkAsRead = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onMarkAsRead) {
+      onMarkAsRead(pullRequest);
+    }
+  };
+  
   return (
     <a 
       href={html_url} 
@@ -47,6 +65,7 @@ const PullRequestCard: React.FC<PullRequestCardProps> = ({
         block p-5 rounded-xl bg-white border border-border/50 shadow-sm
         hover:shadow-md transition-all duration-300 ease-in-out
         hover:scale-[1.01] focus:scale-[1.01] focus:outline-none focus:ring-2 focus:ring-primary/20
+        ${has_new_activity ? 'border-l-4 border-l-primary' : ''}
         ${isStaggered ? 'stagger-item animate-fade-in' : ''}
       `}
     >
@@ -70,7 +89,26 @@ const PullRequestCard: React.FC<PullRequestCardProps> = ({
             
             <span className="text-muted-foreground text-sm">#{pullRequest.number}</span>
             
+            {has_new_activity && (
+              <div className="flex items-center">
+                <Bell className="w-3.5 h-3.5 text-primary" />
+              </div>
+            )}
+            
             <div className="flex-1"></div>
+            
+            <button
+              onClick={handleMarkAsRead}
+              className="p-1 rounded-full hover:bg-secondary transition-colors"
+              aria-label={has_new_activity ? "Mark as read" : "Mark as unread"}
+              title={has_new_activity ? "Mark as read" : "Mark as unread"}
+            >
+              {has_new_activity ? (
+                <Eye className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <EyeOff className="w-4 h-4 text-muted-foreground" />
+              )}
+            </button>
             
             <div className="flex items-center text-muted-foreground">
               <Clock className="w-3 h-3 mr-1" />
@@ -85,6 +123,12 @@ const PullRequestCard: React.FC<PullRequestCardProps> = ({
           <div className="flex items-center text-sm text-muted-foreground">
             <span>by </span>
             <span className="font-medium ml-1">{user.login}</span>
+            
+            {pullRequest.comments_count > 0 && (
+              <span className="ml-2 text-xs flex items-center">
+                <span className="mr-1">•</span> {pullRequest.comments_count} comment{pullRequest.comments_count !== 1 ? 's' : ''}
+              </span>
+            )}
           </div>
           
           {labels.length > 0 && (

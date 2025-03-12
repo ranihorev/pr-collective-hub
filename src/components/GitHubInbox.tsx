@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   fetchPullRequests, 
@@ -6,12 +7,18 @@ import {
   sortPullRequests
 } from '../lib/githubApi';
 import { 
+  getReadStatusFromStorage,
+  markPullRequestAsRead,
+  applyReadStatus
+} from '../lib/readStatusService';
+import { 
   GitHubSettings, 
   PullRequest, 
   RepositoryGroup as RepoGroup,
   AuthorGroup,
   GroupingOption,
-  SortingOption
+  SortingOption,
+  ReadStatus
 } from '../lib/types';
 import EmptyState from './EmptyState';
 import UserFilters from './UserFilters';
@@ -26,7 +33,10 @@ import {
   Settings,
   RefreshCw,
   UserSquare2,
-  FolderGit2
+  FolderGit2,
+  Eye,
+  EyeOff,
+  Bell
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -57,6 +67,13 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
   const [showSettings, setShowSettings] = useState<boolean>(
     !settings.organization || settings.users.length === 0
   );
+  const [readStatuses, setReadStatuses] = useState<Record<number, ReadStatus>>({});
+  const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(false);
+  
+  // Load read statuses from localStorage on mount
+  useEffect(() => {
+    setReadStatuses(getReadStatusFromStorage());
+  }, []);
   
   const fetchData = useCallback(async () => {
     if (!settings.organization || settings.users.length === 0) {
@@ -67,7 +84,10 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
     setError(null);
     
     try {
-      const prs = await fetchPullRequests(settings);
+      let prs = await fetchPullRequests(settings);
+      
+      // Apply read status to pull requests
+      prs = applyReadStatus(prs, readStatuses);
       setPullRequests(prs);
       
       const repoGroups = groupPullRequestsByRepository(
@@ -84,6 +104,8 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
         setFilteredUsers(settings.users);
       }
       
+      const unreadCount = prs.filter(pr => pr.has_new_activity).length;
+      
       if (prs.length === 0) {
         toast({
           title: "No pull requests found",
@@ -91,8 +113,8 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
         });
       } else {
         toast({
-          title: "Pull requests updated",
-          description: `Found ${prs.length} open pull requests.`
+          title: `${prs.length} pull requests found`,
+          description: unreadCount > 0 ? `${unreadCount} with new activity` : "All PRs are read"
         });
       }
     } catch (err) {
@@ -106,13 +128,90 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [settings, sorting, filteredUsers, toast]);
+  }, [settings, sorting, readStatuses, filteredUsers, toast]);
   
   useEffect(() => {
     if (settings.organization && settings.users.length > 0) {
       fetchData();
     }
   }, [fetchData]);
+  
+  const handleMarkAsRead = useCallback((pr: PullRequest) => {
+    const updatedReadStatuses = markPullRequestAsRead(pr, readStatuses);
+    setReadStatuses(updatedReadStatuses);
+    
+    // Update the PullRequest in state
+    const updatedPullRequests = pullRequests.map(p => {
+      if (p.id === pr.id) {
+        return {
+          ...p,
+          last_read_at: new Date().toISOString(),
+          has_new_activity: false
+        };
+      }
+      return p;
+    });
+    
+    setPullRequests(updatedPullRequests);
+    
+    // Update repository groups
+    const updatedRepoGroups = groupPullRequestsByRepository(
+      sortPullRequests(updatedPullRequests, sorting)
+    );
+    setRepositoryGroups(updatedRepoGroups);
+    
+    // Update author groups
+    const updatedAuthorGroups = groupPullRequestsByAuthor(
+      sortPullRequests(updatedPullRequests, sorting)
+    );
+    setAuthorGroups(updatedAuthorGroups);
+    
+    toast({
+      title: "Marked as read",
+      description: `"${pr.title}" is now marked as read`
+    });
+  }, [pullRequests, readStatuses, sorting, toast]);
+  
+  const handleMarkAllAsRead = useCallback(() => {
+    let updatedReadStatuses = { ...readStatuses };
+    
+    // Mark all filtered PRs as read
+    filteredPullRequests.forEach(pr => {
+      updatedReadStatuses = markPullRequestAsRead(pr, updatedReadStatuses, pr.comments_count);
+    });
+    
+    setReadStatuses(updatedReadStatuses);
+    
+    // Update the PullRequests in state
+    const updatedPullRequests = pullRequests.map(p => {
+      if (filteredUsers.includes(p.user.login)) {
+        return {
+          ...p,
+          last_read_at: new Date().toISOString(),
+          has_new_activity: false
+        };
+      }
+      return p;
+    });
+    
+    setPullRequests(updatedPullRequests);
+    
+    // Update repository groups and author groups
+    const updatedRepoGroups = groupPullRequestsByRepository(
+      sortPullRequests(updatedPullRequests, sorting)
+    );
+    setRepositoryGroups(updatedRepoGroups);
+    
+    const updatedAuthorGroups = groupPullRequestsByAuthor(
+      sortPullRequests(updatedPullRequests, sorting)
+    );
+    setAuthorGroups(updatedAuthorGroups);
+    
+    toast({
+      title: "All marked as read",
+      description: `Marked ${filteredPullRequests.length} pull requests as read`
+    });
+  }, [pullRequests, readStatuses, filteredUsers, filteredPullRequests, sorting, toast]);
   
   const handleSettingsSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -141,24 +240,37 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
     fetchData();
   };
   
-  const filteredPullRequests = pullRequests.filter(pr => 
+  let filteredPullRequests = pullRequests.filter(pr => 
     filteredUsers.includes(pr.user.login)
   );
   
+  // Apply unread filter if enabled
+  if (showUnreadOnly) {
+    filteredPullRequests = filteredPullRequests.filter(pr => pr.has_new_activity);
+  }
+  
   const filteredRepositoryGroups = repositoryGroups.map(group => ({
     ...group,
-    pullRequests: group.pullRequests.filter(pr => 
-      filteredUsers.includes(pr.user.login)
-    ),
+    pullRequests: group.pullRequests.filter(pr => {
+      const userMatch = filteredUsers.includes(pr.user.login);
+      const unreadMatch = !showUnreadOnly || pr.has_new_activity;
+      return userMatch && unreadMatch;
+    }),
   })).filter(group => group.pullRequests.length > 0);
   
-  const filteredAuthorGroups = authorGroups.filter(group => 
-    filteredUsers.includes(group.user.login)
-  );
+  const filteredAuthorGroups = authorGroups
+    .filter(group => filteredUsers.includes(group.user.login))
+    .map(group => ({
+      ...group,
+      pullRequests: group.pullRequests.filter(pr => !showUnreadOnly || pr.has_new_activity)
+    }))
+    .filter(group => group.pullRequests.length > 0);
   
   const handleRefresh = () => {
     fetchData();
   };
+  
+  const unreadCount = filteredPullRequests.filter(pr => pr.has_new_activity).length;
   
   const renderContent = () => {
     if (loading && pullRequests.length === 0) {
@@ -189,7 +301,9 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
       return (
         <EmptyState 
           type="empty" 
-          message="No pull requests found for the selected filters."
+          message={showUnreadOnly 
+            ? "No unread pull requests found. Try showing all PRs." 
+            : "No pull requests found for the selected filters."}
           onRetry={handleRefresh}
         />
       );
@@ -199,7 +313,11 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
       return (
         <div className="space-y-6">
           {filteredRepositoryGroups.map(group => (
-            <RepositoryGroup key={group.id} group={group} />
+            <RepositoryGroup 
+              key={group.id} 
+              group={group} 
+              onMarkAsRead={handleMarkAsRead}
+            />
           ))}
         </div>
       );
@@ -215,13 +333,21 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
                   className="w-6 h-6 rounded-full"
                 />
                 <h2 className="font-medium">{group.user.login}</h2>
-                <span className="text-sm bg-secondary px-2 py-0.5 rounded-full">
+                <span className={`text-sm px-2 py-0.5 rounded-full ${
+                  group.pullRequests.some(pr => pr.has_new_activity) 
+                    ? 'bg-primary text-white' 
+                    : 'bg-secondary'
+                }`}>
                   {group.pullRequests.length}
                 </span>
               </div>
               <div className="space-y-3">
                 {sortPullRequests(group.pullRequests, sorting).map(pr => (
-                  <PullRequestCard key={pr.id} pullRequest={pr} />
+                  <PullRequestCard 
+                    key={pr.id} 
+                    pullRequest={pr} 
+                    onMarkAsRead={handleMarkAsRead} 
+                  />
                 ))}
               </div>
             </div>
@@ -245,9 +371,29 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
             <div className="flex items-center">
               <GitPullRequest className="w-8 h-8 text-primary mr-3" />
               <h1 className="text-2xl font-semibold">GitHub Inbox</h1>
+              {unreadCount > 0 && (
+                <div className="ml-3 bg-primary text-white text-sm font-medium rounded-full px-2 py-0.5 flex items-center">
+                  <Bell className="w-3 h-3 mr-1" />
+                  {unreadCount}
+                </div>
+              )}
             </div>
             
             <div className="flex items-center gap-3">
+              {filteredPullRequests.length > 0 && (
+                <button
+                  onClick={handleMarkAllAsRead}
+                  className={cn(
+                    "flex items-center gap-1 px-3 py-1 rounded-md text-sm",
+                    "bg-secondary hover:bg-secondary/80 focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  )}
+                  aria-label="Mark all as read"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span>Mark all read</span>
+                </button>
+              )}
+              
               <button
                 onClick={handleRefresh}
                 disabled={loading}
@@ -421,11 +567,37 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
         </header>
         
         {pullRequests.length > 0 && !showSettings && (
-          <UserFilters 
-            users={uniqueUsers}
-            selectedUsers={filteredUsers}
-            onChange={setFilteredUsers}
-          />
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <UserFilters 
+                users={uniqueUsers}
+                selectedUsers={filteredUsers}
+                onChange={setFilteredUsers}
+              />
+              
+              <button
+                onClick={() => setShowUnreadOnly(!showUnreadOnly)}
+                className={cn(
+                  "flex items-center gap-1 px-3 py-1 rounded-md text-sm transition-colors",
+                  showUnreadOnly
+                    ? "bg-primary text-white hover:bg-primary/90"
+                    : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+                )}
+              >
+                {showUnreadOnly ? (
+                  <>
+                    <Bell className="w-3.5 h-3.5 mr-1" />
+                    Unread only
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-3.5 h-3.5 mr-1" />
+                    Show all
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         )}
         
         <main className="pb-12">

@@ -1,19 +1,23 @@
 
 import React, { useState } from 'react';
-import { RepositoryGroup as RepoGroup } from '../lib/types';
+import { RepositoryGroup as RepoGroup, PullRequest } from '../lib/types';
 import PullRequestCard from './PullRequestCard';
 import { ChevronDown, ChevronUp, Github } from 'lucide-react';
 
 interface RepositoryGroupProps {
   group: RepoGroup;
   isExpanded?: boolean;
+  onMarkAsRead?: (pr: PullRequest) => void;
 }
 
 const RepositoryGroup: React.FC<RepositoryGroupProps> = ({ 
   group,
-  isExpanded: initialExpanded = true
+  isExpanded: initialExpanded = true,
+  onMarkAsRead
 }) => {
   const [isExpanded, setIsExpanded] = useState(initialExpanded);
+  
+  const hasUnreadPRs = group.pullRequests.some(pr => pr.has_new_activity);
   
   return (
     <div className="mb-6 animate-slide-in stagger-item">
@@ -26,7 +30,7 @@ const RepositoryGroup: React.FC<RepositoryGroupProps> = ({
           >
             <span>{group.name}</span>
             {group.pullRequests.length > 0 && (
-              <span className="text-sm bg-secondary px-2 py-0.5 rounded-full">
+              <span className={`text-sm px-2 py-0.5 rounded-full ${hasUnreadPRs ? 'bg-primary text-white' : 'bg-secondary'}`}>
                 {group.pullRequests.length}
               </span>
             )}
@@ -55,6 +59,7 @@ const RepositoryGroup: React.FC<RepositoryGroupProps> = ({
               key={pr.id} 
               pullRequest={pr} 
               isStaggered={false}
+              onMarkAsRead={onMarkAsRead}
             />
           ))}
         </div>

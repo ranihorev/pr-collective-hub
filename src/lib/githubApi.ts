@@ -90,6 +90,8 @@ export async function fetchPullRequests(settings: GitHubSettings): Promise<PullR
               name: label.name,
               color: label.color,
             })) : [],
+            comments_count: item.comments,
+            comments_url: item.comments_url,
           };
         } catch (itemError) {
           console.error(`Error processing PR item:`, itemError);

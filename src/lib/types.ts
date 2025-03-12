@@ -30,6 +30,10 @@ export interface PullRequest {
     name: string;
     color: string;
   }>;
+  comments_count?: number;
+  comments_url?: string;
+  last_read_at?: string | null;
+  has_new_activity?: boolean;
 }
 
 export interface RepositoryGroup {
@@ -65,4 +69,10 @@ export interface GitHubState {
   grouping: GroupingOption;
   sorting: SortingOption;
   settings: GitHubSettings;
+}
+
+export interface ReadStatus {
+  prId: number;
+  lastReadAt: string;
+  commentsReadCount: number;
 }

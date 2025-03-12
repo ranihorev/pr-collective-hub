@@ -1,0 +1,81 @@
+
+import { PullRequest, ReadStatus } from "./types";
+
+const READ_STATUS_KEY = "github-inbox-read-status";
+
+export function getReadStatusFromStorage(): Record<number, ReadStatus> {
+  try {
+    const stored = localStorage.getItem(READ_STATUS_KEY);
+    if (stored) {
+      return JSON.parse(stored);
+    }
+  } catch (error) {
+    console.error("Error reading PR read status from storage:", error);
+  }
+  return {};
+}
+
+export function saveReadStatusToStorage(readStatus: Record<number, ReadStatus>): void {
+  try {
+    localStorage.setItem(READ_STATUS_KEY, JSON.stringify(readStatus));
+  } catch (error) {
+    console.error("Error saving PR read status to storage:", error);
+  }
+}
+
+export function markPullRequestAsRead(
+  pr: PullRequest,
+  readStatuses: Record<number, ReadStatus>,
+  commentsCount: number = pr.comments_count || 0
+): Record<number, ReadStatus> {
+  const updatedReadStatuses = { ...readStatuses };
+  
+  updatedReadStatuses[pr.id] = {
+    prId: pr.id,
+    lastReadAt: new Date().toISOString(),
+    commentsReadCount: commentsCount
+  };
+  
+  saveReadStatusToStorage(updatedReadStatuses);
+  return updatedReadStatuses;
+}
+
+export function hasNewActivity(
+  pr: PullRequest, 
+  readStatus: ReadStatus | undefined
+): boolean {
+  // If never read before, it has new activity
+  if (!readStatus) {
+    return true;
+  }
+  
+  // Compare last update with last read time
+  const lastReadAt = new Date(readStatus.lastReadAt);
+  const lastUpdatedAt = new Date(pr.updated_at);
+  
+  // If PR was updated after last read
+  if (lastUpdatedAt > lastReadAt) {
+    return true;
+  }
+  
+  // If there are new comments since last read
+  if (pr.comments_count && readStatus.commentsReadCount < pr.comments_count) {
+    return true;
+  }
+  
+  return false;
+}
+
+export function applyReadStatus(
+  pullRequests: PullRequest[],
+  readStatuses: Record<number, ReadStatus>
+): PullRequest[] {
+  return pullRequests.map(pr => {
+    const readStatus = readStatuses[pr.id];
+    return {
+      ...pr,
+      last_read_at: readStatus?.lastReadAt || null,
+      has_new_activity: hasNewActivity(pr, readStatus)
+    };
+  });
+}

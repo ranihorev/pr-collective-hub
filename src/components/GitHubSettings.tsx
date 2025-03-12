@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { GitHubSettings as GitHubSettingsType } from '@/lib/types';
+import { ExternalLink } from 'lucide-react';
 
 interface GitHubSettingsProps {
   settings: GitHubSettingsType;
@@ -28,7 +29,7 @@ const GitHubSettings: React.FC<GitHubSettingsProps> = ({
     const newSettings = {
       organization,
       users,
-      token: token || '',
+      token,
     };
     
     onSubmit(newSettings);
@@ -73,18 +74,27 @@ const GitHubSettings: React.FC<GitHubSettingsProps> = ({
         
         <div>
           <label htmlFor="token" className="block text-sm font-medium mb-1">
-            GitHub Token (Optional)
+            GitHub Token
+            <a 
+              href="https://github.com/settings/tokens" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="ml-2 inline-flex items-center text-primary hover:text-primary/80 transition-colors"
+            >
+              Generate token <ExternalLink className="ml-1 h-3 w-3" />
+            </a>
           </label>
           <input
             id="token"
             name="token"
             type="password"
             defaultValue={settings.token}
+            required
             placeholder="GitHub personal access token"
             className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <p className="text-xs text-muted-foreground mt-1">
-            A token increases API rate limits and allows access to private repositories
+            A token is required and allows access to GitHub APIs with higher rate limits
           </p>
         </div>
         

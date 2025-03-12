@@ -24,6 +24,11 @@ export function useGitHubSettings(initialSettings: GitHubSettings = DEFAULT_SETT
   }, []);
   
   const updateSettings = (newSettings: GitHubSettings) => {
+    // Ensure token is not empty
+    if (!newSettings.token) {
+      throw new Error('GitHub token is required');
+    }
+    
     setSettings(newSettings);
     
     // Save to localStorage

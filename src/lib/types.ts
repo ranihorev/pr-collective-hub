@@ -53,7 +53,7 @@ export interface AuthorGroup {
 export interface GitHubSettings {
   organization: string;
   users: string[];
-  token?: string;
+  token: string; // Changed from optional to required
 }
 
 export type GroupingOption = "repository" | "author";

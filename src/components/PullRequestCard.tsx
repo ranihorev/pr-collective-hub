@@ -33,7 +33,7 @@ const PullRequestCard: React.FC<PullRequestCardProps> = ({
   isStaggered = true,
   onMarkAsRead
 }) => {
-  const { title, html_url, user, updated_at, draft, labels, has_new_activity, review_status, reviewers } = pullRequest;
+  const { title, html_url, user, updated_at, draft, has_new_activity, review_status, reviewers } = pullRequest;
   
   const isPrOpen = pullRequest.state === 'open';
   const isPrMerged = pullRequest.merged_at !== null;
@@ -71,7 +71,6 @@ const PullRequestCard: React.FC<PullRequestCardProps> = ({
       return null;
     }
     
-    // Group reviewers by state
     const reviewersList = reviewers ? Object.entries(reviewers) : [];
     const approvedReviewers = reviewersList.filter(([_, state]) => state === "APPROVED").map(([name]) => name);
     const changesRequestedReviewers = reviewersList.filter(([_, state]) => state === "CHANGES_REQUESTED").map(([name]) => name);
@@ -256,28 +255,6 @@ const PullRequestCard: React.FC<PullRequestCardProps> = ({
               </span>
             )}
           </div>
-          
-          {labels.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-3">
-              {labels.slice(0, 3).map(label => (
-                <span 
-                  key={label.id}
-                  className="inline-flex px-2 py-0.5 text-xs rounded-full"
-                  style={{ 
-                    backgroundColor: `#${label.color}20`, 
-                    color: `#${label.color}` 
-                  }}
-                >
-                  {label.name}
-                </span>
-              ))}
-              {labels.length > 3 && (
-                <span className="inline-flex px-2 py-0.5 text-xs rounded-full bg-secondary text-secondary-foreground">
-                  +{labels.length - 3}
-                </span>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </a>

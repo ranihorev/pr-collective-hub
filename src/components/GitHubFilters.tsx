@@ -9,25 +9,31 @@ import {
   FolderGit2,
   UserSquare2,
   Bell,
-  Eye
+  Eye,
+  FileEdit,
+  FileCheck
 } from 'lucide-react';
 
 interface GitHubFiltersProps {
   grouping: GroupingOption;
   sorting: SortingOption;
   showUnreadOnly: boolean;
+  showDrafts: boolean;
   onGroupingChange: (grouping: GroupingOption) => void;
   onSortingChange: (sorting: SortingOption) => void;
   onShowUnreadOnlyChange: (showUnreadOnly: boolean) => void;
+  onShowDraftsChange: (showDrafts: boolean) => void;
 }
 
 const GitHubFilters: React.FC<GitHubFiltersProps> = ({ 
   grouping, 
   sorting, 
   showUnreadOnly,
+  showDrafts,
   onGroupingChange,
   onSortingChange,
-  onShowUnreadOnlyChange
+  onShowUnreadOnlyChange,
+  onShowDraftsChange
 }) => {
   return (
     <>
@@ -101,7 +107,7 @@ const GitHubFilters: React.FC<GitHubFiltersProps> = ({
       </div>
       
       <div className="mb-6">
-        <div className="flex items-center justify-end mb-4">
+        <div className="flex items-center justify-end gap-3">
           <button
             onClick={() => onShowUnreadOnlyChange(!showUnreadOnly)}
             className={cn(
@@ -120,6 +126,28 @@ const GitHubFilters: React.FC<GitHubFiltersProps> = ({
               <>
                 <Eye className="w-3.5 h-3.5 mr-1" />
                 Show all
+              </>
+            )}
+          </button>
+          
+          <button
+            onClick={() => onShowDraftsChange(!showDrafts)}
+            className={cn(
+              "flex items-center gap-1 px-3 py-1 rounded-md text-sm transition-colors",
+              showDrafts
+                ? "bg-primary text-white hover:bg-primary/90"
+                : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+            )}
+          >
+            {showDrafts ? (
+              <>
+                <FileEdit className="w-3.5 h-3.5 mr-1" />
+                Show drafts
+              </>
+            ) : (
+              <>
+                <FileCheck className="w-3.5 h-3.5 mr-1" />
+                Hide drafts
               </>
             )}
           </button>

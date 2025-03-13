@@ -35,6 +35,7 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
     !settings.organization || settings.users.length === 0 || !settings.token
   );
   const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(false);
+  const [showDrafts, setShowDrafts] = useState<boolean>(false); // Hide drafts by default
   
   // Initialize filteredUsers from settings
   useEffect(() => {
@@ -55,7 +56,7 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
     filteredAuthorGroups,
     uniqueUsers,
     unreadCount
-  } = usePullRequests(settings, sorting, filteredUsers, showUnreadOnly);
+  } = usePullRequests(settings, sorting, filteredUsers, showUnreadOnly, showDrafts);
   
   // Fetch data when settings change
   useEffect(() => {
@@ -161,9 +162,11 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
               grouping={grouping}
               sorting={sorting}
               showUnreadOnly={showUnreadOnly}
+              showDrafts={showDrafts}
               onGroupingChange={setGrouping}
               onSortingChange={setSorting}
               onShowUnreadOnlyChange={setShowUnreadOnly}
+              onShowDraftsChange={setShowDrafts}
             />
           )}
         </header>

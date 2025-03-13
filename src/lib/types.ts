@@ -82,6 +82,7 @@ export interface GitHubState {
   grouping: GroupingOption;
   sorting: SortingOption;
   settings: GitHubSettings;
+  showDrafts: boolean; // Added this property
 }
 
 export interface ReadStatus {

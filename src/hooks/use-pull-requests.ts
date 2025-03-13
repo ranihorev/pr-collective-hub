@@ -26,7 +26,8 @@ export function usePullRequests(
   settings: GitHubSettings,
   sorting: SortingOption,
   filteredUsers: string[],
-  showUnreadOnly: boolean
+  showUnreadOnly: boolean,
+  showDrafts: boolean = false // Add the showDrafts parameter with default value
 ) {
   const { toast } = useToast();
   const [pullRequests, setPullRequests] = useState<PullRequest[]>([]);
@@ -43,8 +44,10 @@ export function usePullRequests(
   
   // Filtered pull requests based on current filters
   const filteredPullRequests = pullRequests.filter(pr => 
-    filteredUsers.includes(pr.user.login)
-  ).filter(pr => !showUnreadOnly || pr.has_new_activity);
+    filteredUsers.includes(pr.user.login) && 
+    (!showUnreadOnly || pr.has_new_activity) &&
+    (showDrafts || !pr.draft) // Filter out draft PRs if showDrafts is false
+  );
   
   // Filtered repository and author groups
   const filteredRepositoryGroups = repositoryGroups.map(group => ({
@@ -52,7 +55,8 @@ export function usePullRequests(
     pullRequests: group.pullRequests.filter(pr => {
       const userMatch = filteredUsers.includes(pr.user.login);
       const unreadMatch = !showUnreadOnly || pr.has_new_activity;
-      return userMatch && unreadMatch;
+      const draftMatch = showDrafts || !pr.draft;
+      return userMatch && unreadMatch && draftMatch;
     }),
   })).filter(group => group.pullRequests.length > 0);
   
@@ -60,7 +64,10 @@ export function usePullRequests(
     .filter(group => filteredUsers.includes(group.user.login))
     .map(group => ({
       ...group,
-      pullRequests: group.pullRequests.filter(pr => !showUnreadOnly || pr.has_new_activity)
+      pullRequests: group.pullRequests.filter(pr => 
+        (!showUnreadOnly || pr.has_new_activity) &&
+        (showDrafts || !pr.draft)
+      )
     }))
     .filter(group => group.pullRequests.length > 0);
   

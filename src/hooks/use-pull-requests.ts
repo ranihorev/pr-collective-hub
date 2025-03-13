@@ -19,7 +19,9 @@ import {
   getReadStatusFromStorage,
   applyReadStatus,
   markPullRequestAsRead,
-  togglePullRequestReadStatus
+  togglePullRequestReadStatus,
+  hasNewActivity,
+  saveReadStatusToStorage
 } from '@/lib/readStatusService';
 
 export function usePullRequests(
@@ -303,6 +305,3 @@ export function usePullRequests(
     unreadCount
   };
 }
-
-// Import hasNewActivity and saveReadStatusToStorage for local use
-import { hasNewActivity, saveReadStatusToStorage } from '@/lib/readStatusService';

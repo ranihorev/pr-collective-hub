@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { formatDate } from '../lib/githubApi';
 import { PullRequest } from '../lib/types';
@@ -62,6 +63,13 @@ const PullRequestCard: React.FC<PullRequestCardProps> = ({
     e.preventDefault();
     e.stopPropagation();
     if (onMarkAsRead) {
+      onMarkAsRead(pullRequest);
+    }
+  };
+  
+  const handleCardClick = () => {
+    // Mark as read when clicking on the card
+    if (has_new_activity && onMarkAsRead) {
       onMarkAsRead(pullRequest);
     }
   };
@@ -191,6 +199,7 @@ const PullRequestCard: React.FC<PullRequestCardProps> = ({
         ${has_new_activity ? 'border-l-4 border-l-primary' : ''}
         ${isStaggered ? 'stagger-item animate-fade-in' : ''}
       `}
+      onClick={handleCardClick}
     >
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0">

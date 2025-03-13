@@ -1,5 +1,4 @@
-
-import { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { 
   fetchPullRequests, 

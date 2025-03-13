@@ -36,6 +36,7 @@ export interface PullRequest {
   has_new_activity?: boolean;
   reviews?: Review[];
   review_status?: ReviewStatus;
+  reviewers?: { [key: string]: "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" };
 }
 
 export interface Review {

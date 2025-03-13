@@ -12,8 +12,16 @@ import {
   Bell,
   ShieldCheck,
   ShieldX,
-  MessageSquare
+  MessageSquare,
+  UserCheck,
+  UserX
 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface PullRequestCardProps {
   pullRequest: PullRequest;
@@ -26,7 +34,7 @@ const PullRequestCard: React.FC<PullRequestCardProps> = ({
   isStaggered = true,
   onMarkAsRead
 }) => {
-  const { title, html_url, user, updated_at, draft, labels, has_new_activity, review_status } = pullRequest;
+  const { title, html_url, user, updated_at, draft, labels, has_new_activity, review_status, reviewers } = pullRequest;
   
   const isPrOpen = pullRequest.state === 'open';
   const isPrMerged = pullRequest.merged_at !== null;
@@ -64,27 +72,109 @@ const PullRequestCard: React.FC<PullRequestCardProps> = ({
       return null;
     }
     
+    // Group reviewers by state
+    const reviewersList = reviewers ? Object.entries(reviewers) : [];
+    const approvedReviewers = reviewersList.filter(([_, state]) => state === "APPROVED").map(([name]) => name);
+    const changesRequestedReviewers = reviewersList.filter(([_, state]) => state === "CHANGES_REQUESTED").map(([name]) => name);
+    const commentedReviewers = reviewersList.filter(([_, state]) => state === "COMMENTED").map(([name]) => name);
+    
+    const hasReviewers = reviewersList.length > 0;
+    
+    const renderTooltipContent = () => (
+      <div className="space-y-2 max-w-xs">
+        {approvedReviewers.length > 0 && (
+          <div>
+            <div className="font-medium text-green-500 flex items-center gap-1">
+              <UserCheck className="w-3.5 h-3.5" /> Approved by:
+            </div>
+            <div className="text-xs ml-4">
+              {approvedReviewers.map(name => (
+                <div key={name}>{name}</div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {changesRequestedReviewers.length > 0 && (
+          <div>
+            <div className="font-medium text-red-500 flex items-center gap-1">
+              <UserX className="w-3.5 h-3.5" /> Changes requested by:
+            </div>
+            <div className="text-xs ml-4">
+              {changesRequestedReviewers.map(name => (
+                <div key={name}>{name}</div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {commentedReviewers.length > 0 && (
+          <div>
+            <div className="font-medium text-blue-500 flex items-center gap-1">
+              <MessageSquare className="w-3.5 h-3.5" /> Commented by:
+            </div>
+            <div className="text-xs ml-4">
+              {commentedReviewers.map(name => (
+                <div key={name}>{name}</div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {!hasReviewers && (
+          <div className="text-sm">No reviewers yet</div>
+        )}
+      </div>
+    );
+    
     switch (review_status) {
       case "APPROVED":
         return (
-          <div className="flex items-center gap-1 text-green-600" title="Approved">
-            <ShieldCheck className="w-4 h-4" />
-            <span className="text-xs font-medium">Approved</span>
-          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1 text-green-600" title="Approved">
+                  <ShieldCheck className="w-4 h-4" />
+                  <span className="text-xs font-medium">Approved</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {renderTooltipContent()}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         );
       case "CHANGES_REQUESTED":
         return (
-          <div className="flex items-center gap-1 text-red-500" title="Changes requested">
-            <ShieldX className="w-4 h-4" />
-            <span className="text-xs font-medium">Changes requested</span>
-          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1 text-red-500" title="Changes requested">
+                  <ShieldX className="w-4 h-4" />
+                  <span className="text-xs font-medium">Changes requested</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {renderTooltipContent()}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         );
       case "COMMENTED":
         return (
-          <div className="flex items-center gap-1 text-blue-500" title="Reviewed with comments">
-            <MessageSquare className="w-4 h-4" />
-            <span className="text-xs font-medium">Reviewed</span>
-          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1 text-blue-500" title="Reviewed with comments">
+                  <MessageSquare className="w-4 h-4" />
+                  <span className="text-xs font-medium">Reviewed</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                {renderTooltipContent()}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         );
       default:
         return null;

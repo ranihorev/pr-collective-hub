@@ -27,7 +27,7 @@ export function usePullRequests(
   sorting: SortingOption,
   filteredUsers: string[],
   showUnreadOnly: boolean,
-  showDrafts: boolean = false
+  showDrafts: boolean = false // Add the showDrafts parameter with default value
 ) {
   const { toast } = useToast();
   const [pullRequests, setPullRequests] = useState<PullRequest[]>([]);
@@ -46,7 +46,7 @@ export function usePullRequests(
   const filteredPullRequests = pullRequests.filter(pr => 
     filteredUsers.includes(pr.user.login) && 
     (!showUnreadOnly || pr.has_new_activity) &&
-    (showDrafts || !pr.draft)
+    (showDrafts || !pr.draft) // Filter out draft PRs if showDrafts is false
   );
   
   // Filtered repository and author groups
@@ -106,12 +106,17 @@ export function usePullRequests(
       );
       setAuthorGroups(userGroups);
       
-      // Removed the toast notifications about PR count
+      const unreadCount = prs.filter(pr => pr.has_new_activity).length;
       
       if (prs.length === 0) {
         toast({
           title: "No pull requests found",
           description: "Try adding more users or check your organization name."
+        });
+      } else {
+        toast({
+          title: `${prs.length} pull requests found`,
+          description: unreadCount > 0 ? `${unreadCount} with new activity` : "All PRs are read"
         });
       }
     } catch (err) {
@@ -129,10 +134,6 @@ export function usePullRequests(
   
   // Mark a single PR as read or unread (toggle)
   const handleMarkAsRead = useCallback((pr: PullRequest) => {
-    // Store the previous state for potential undo operation
-    const previousState = { ...readStatuses };
-    const wasRead = !hasNewActivity(pr, readStatuses[pr.id]);
-    
     const updatedReadStatuses = togglePullRequestReadStatus(pr, readStatuses);
     setReadStatuses(updatedReadStatuses);
     
@@ -163,56 +164,14 @@ export function usePullRequests(
     );
     setAuthorGroups(updatedAuthorGroups);
     
-    // Display toast with undo button
-    const { dismiss } = toast({
+    toast({
       title: pr.has_new_activity ? "Marked as read" : "Marked as unread",
-      description: `"${pr.title}" is now marked as ${pr.has_new_activity ? "read" : "unread"}`,
-      action: (
-        <button
-          onClick={() => {
-            // Restore previous state
-            setReadStatuses(previousState);
-            
-            // Revert the PullRequest state
-            const revertedPullRequests = pullRequests.map(p => {
-              if (p.id === pr.id) {
-                return {
-                  ...p,
-                  last_read_at: wasRead ? new Date().toISOString() : null,
-                  has_new_activity: !wasRead
-                };
-              }
-              return p;
-            });
-            
-            setPullRequests(revertedPullRequests);
-            
-            // Update repository and author groups
-            setRepositoryGroups(groupPullRequestsByRepository(
-              sortPullRequests(revertedPullRequests, sorting)
-            ));
-            
-            setAuthorGroups(groupPullRequestsByAuthor(
-              sortPullRequests(revertedPullRequests, sorting)
-            ));
-            
-            // Save reverted state to storage
-            saveReadStatusToStorage(previousState);
-            dismiss();
-          }}
-          className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 border border-input hover:bg-accent hover:text-accent-foreground h-8 px-3 py-2"
-        >
-          <span>Undo</span>
-        </button>
-      ),
+      description: `"${pr.title}" is now marked as ${pr.has_new_activity ? "read" : "unread"}`
     });
   }, [pullRequests, readStatuses, sorting, toast]);
   
   // Mark all filtered PRs as read
   const handleMarkAllAsRead = useCallback(() => {
-    // Store previous state for potential undo
-    const previousState = { ...readStatuses };
-    
     let updatedReadStatuses = { ...readStatuses };
     
     // Mark all filtered PRs as read
@@ -247,43 +206,9 @@ export function usePullRequests(
     );
     setAuthorGroups(updatedAuthorGroups);
     
-    // Display toast with undo button
-    const { dismiss } = toast({
+    toast({
       title: "All marked as read",
-      description: `Marked ${filteredPullRequests.length} pull requests as read`,
-      action: (
-        <button
-          onClick={() => {
-            // Restore previous state
-            setReadStatuses(previousState);
-            
-            // Update pull requests state based on previous read statuses
-            const revertedPullRequests = pullRequests.map(p => ({
-              ...p,
-              last_read_at: previousState[p.id]?.lastReadAt || null,
-              has_new_activity: hasNewActivity(p, previousState[p.id])
-            }));
-            
-            setPullRequests(revertedPullRequests);
-            
-            // Update repository and author groups
-            setRepositoryGroups(groupPullRequestsByRepository(
-              sortPullRequests(revertedPullRequests, sorting)
-            ));
-            
-            setAuthorGroups(groupPullRequestsByAuthor(
-              sortPullRequests(revertedPullRequests, sorting)
-            ));
-            
-            // Save reverted state to storage
-            saveReadStatusToStorage(previousState);
-            dismiss();
-          }}
-          className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 border border-input hover:bg-accent hover:text-accent-foreground h-8 px-3 py-2"
-        >
-          <span>Undo</span>
-        </button>
-      ),
+      description: `Marked ${filteredPullRequests.length} pull requests as read`
     });
   }, [pullRequests, readStatuses, filteredUsers, sorting, toast, filteredPullRequests]);
   
@@ -304,5 +229,5 @@ export function usePullRequests(
   };
 }
 
-// Import hasNewActivity and saveReadStatusToStorage for local use
-import { hasNewActivity, saveReadStatusToStorage } from '@/lib/readStatusService';
+// Import hasNewActivity for local use
+import { hasNewActivity } from '@/lib/readStatusService';

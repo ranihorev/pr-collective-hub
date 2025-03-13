@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useGitHubSettings } from '@/hooks/use-github-settings';
 import { usePullRequests } from '@/hooks/use-pull-requests';
@@ -34,8 +33,8 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
   const [showSettings, setShowSettings] = useState<boolean>(
     !settings.organization || !settings.token || settings.users.length === 0
   );
-  const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(false);
-  const [showDrafts, setShowDrafts] = useState<boolean>(false); // Hide drafts by default
+  const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(true);
+  const [showDrafts, setShowDrafts] = useState<boolean>(false);
   
   // Initialize filteredUsers from settings
   useEffect(() => {

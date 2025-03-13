@@ -34,7 +34,7 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
   const [showSettings, setShowSettings] = useState<boolean>(
     !settings.organization || !settings.token || settings.users.length === 0
   );
-  const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(false);
+  const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(true);
   const [showDrafts, setShowDrafts] = useState<boolean>(false); // Hide drafts by default
   
   // Initialize filteredUsers from settings

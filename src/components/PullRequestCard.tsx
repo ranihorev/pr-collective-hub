@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { formatDate } from '../lib/githubApi';
 import { PullRequest } from '../lib/types';

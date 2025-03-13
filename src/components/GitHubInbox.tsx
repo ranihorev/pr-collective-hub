@@ -32,7 +32,7 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
   const [sorting, setSorting] = useState<SortingOption>('updated');
   const [filteredUsers, setFilteredUsers] = useState<string[]>([]);
   const [showSettings, setShowSettings] = useState<boolean>(
-    !settings.organization || settings.users.length === 0 || !settings.token
+    !settings.organization || !settings.token || settings.users.length === 0
   );
   const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(false);
   const [showDrafts, setShowDrafts] = useState<boolean>(false); // Hide drafts by default
@@ -60,7 +60,7 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
   
   // Fetch data when settings change
   useEffect(() => {
-    if (settings.organization && settings.users.length > 0) {
+    if (settings.organization && settings.token && settings.users.length > 0) {
       fetchData();
     }
   }, [settings, fetchData]);

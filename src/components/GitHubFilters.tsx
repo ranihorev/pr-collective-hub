@@ -142,12 +142,12 @@ const GitHubFilters: React.FC<GitHubFiltersProps> = ({
             {showDrafts ? (
               <>
                 <FileEdit className="w-3.5 h-3.5 mr-1" />
-                Show drafts
+                Showing drafts
               </>
             ) : (
               <>
                 <FileCheck className="w-3.5 h-3.5 mr-1" />
-                Hide drafts
+                Hiding drafts
               </>
             )}
           </button>

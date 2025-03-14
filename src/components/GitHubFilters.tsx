@@ -11,7 +11,8 @@ import {
   Bell,
   Eye,
   FileEdit,
-  FileCheck
+  FileCheck,
+  ShieldCheck
 } from 'lucide-react';
 
 interface GitHubFiltersProps {
@@ -19,10 +20,12 @@ interface GitHubFiltersProps {
   sorting: SortingOption;
   showUnreadOnly: boolean;
   showDrafts: boolean;
+  hideApproved: boolean;
   onGroupingChange: (grouping: GroupingOption) => void;
   onSortingChange: (sorting: SortingOption) => void;
   onShowUnreadOnlyChange: (showUnreadOnly: boolean) => void;
   onShowDraftsChange: (showDrafts: boolean) => void;
+  onHideApprovedChange: (hideApproved: boolean) => void;
 }
 
 const GitHubFilters: React.FC<GitHubFiltersProps> = ({ 
@@ -30,10 +33,12 @@ const GitHubFilters: React.FC<GitHubFiltersProps> = ({
   sorting, 
   showUnreadOnly,
   showDrafts,
+  hideApproved,
   onGroupingChange,
   onSortingChange,
   onShowUnreadOnlyChange,
-  onShowDraftsChange
+  onShowDraftsChange,
+  onHideApprovedChange
 }) => {
   return (
     <>
@@ -126,6 +131,28 @@ const GitHubFilters: React.FC<GitHubFiltersProps> = ({
               <>
                 <Eye className="w-3.5 h-3.5 mr-1" />
                 Show all
+              </>
+            )}
+          </button>
+          
+          <button
+            onClick={() => onHideApprovedChange(!hideApproved)}
+            className={cn(
+              "flex items-center gap-1 px-3 py-1 rounded-md text-sm transition-colors",
+              hideApproved
+                ? "bg-primary text-white hover:bg-primary/90"
+                : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+            )}
+          >
+            {hideApproved ? (
+              <>
+                <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                Hiding approved
+              </>
+            ) : (
+              <>
+                <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+                Showing approved
               </>
             )}
           </button>

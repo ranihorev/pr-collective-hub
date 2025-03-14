@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -28,8 +29,9 @@ export function usePullRequests(
   settings: GitHubSettings,
   sorting: SortingOption,
   filteredUsers: string[],
-  showUnreadOnly: boolean = true, // Changed to true by default
-  showDrafts: boolean = false
+  showUnreadOnly: boolean = true,
+  showDrafts: boolean = false,
+  hideApproved: boolean = false
 ) {
   const { toast } = useToast();
   const [pullRequests, setPullRequests] = useState<PullRequest[]>([]);
@@ -47,7 +49,8 @@ export function usePullRequests(
   const filteredPullRequests = pullRequests.filter(pr => 
     filteredUsers.includes(pr.user.login) && 
     (!showUnreadOnly || pr.has_new_activity) &&
-    (showDrafts || !pr.draft)
+    (showDrafts || !pr.draft) &&
+    (!hideApproved || pr.review_status !== "APPROVED")
   );
   
   const filteredRepositoryGroups = repositoryGroups.map(group => ({
@@ -56,7 +59,8 @@ export function usePullRequests(
       const userMatch = filteredUsers.includes(pr.user.login);
       const unreadMatch = !showUnreadOnly || pr.has_new_activity;
       const draftMatch = showDrafts || !pr.draft;
-      return userMatch && unreadMatch && draftMatch;
+      const approvedMatch = !hideApproved || pr.review_status !== "APPROVED";
+      return userMatch && unreadMatch && draftMatch && approvedMatch;
     }),
   })).filter(group => group.pullRequests.length > 0);
   
@@ -66,7 +70,8 @@ export function usePullRequests(
       ...group,
       pullRequests: group.pullRequests.filter(pr => 
         (!showUnreadOnly || pr.has_new_activity) &&
-        (showDrafts || !pr.draft)
+        (showDrafts || !pr.draft) &&
+        (!hideApproved || pr.review_status !== "APPROVED")
       )
     }))
     .filter(group => group.pullRequests.length > 0);

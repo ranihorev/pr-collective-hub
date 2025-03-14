@@ -1,4 +1,3 @@
-
 import { GitHubSettings, PullRequest, Review, ReviewStatus } from "./types";
 
 const BASE_URL = "https://api.github.com";
@@ -19,7 +18,6 @@ export async function fetchPullRequests(settings: GitHubSettings): Promise<PullR
       headers["Authorization"] = `Bearer ${token}`;
     }
     
-    // Create the author query without parentheses
     const authorQuery = users.map(user => `author:${user}`).join(" ");
     const query = `org:${organization} is:pr is:open ${authorQuery}`;
     const url = `${BASE_URL}/search/issues?q=${encodeURIComponent(query)}&per_page=100`;
@@ -35,7 +33,6 @@ export async function fetchPullRequests(settings: GitHubSettings): Promise<PullR
       throw new Error(`GitHub API returned ${response.status}: ${responseText}`);
     }
     
-    // Parse the response text into JSON
     const data = JSON.parse(responseText);
     
     if (!data.items || !Array.isArray(data.items)) {
@@ -45,11 +42,9 @@ export async function fetchPullRequests(settings: GitHubSettings): Promise<PullR
     
     console.log(`Found ${data.items.length} PRs`);
     
-    // Process pull requests
     const pullRequests = await Promise.all(
       data.items.map(async (item: any) => {
         try {
-          // Extract repository info from repository_url
           const repoUrl = item.repository_url;
           
           const repoResponse = await fetch(repoUrl, { headers });
@@ -94,7 +89,6 @@ export async function fetchPullRequests(settings: GitHubSettings): Promise<PullR
             comments_url: item.comments_url,
           };
           
-          // Fetch reviews for this PR
           return await fetchReviewsForPullRequest(pullRequest, settings, headers);
         } catch (itemError) {
           console.error(`Error processing PR item:`, itemError);
@@ -103,7 +97,6 @@ export async function fetchPullRequests(settings: GitHubSettings): Promise<PullR
       })
     );
     
-    // Filter out any null values (from failed requests)
     return pullRequests.filter(Boolean);
   } catch (error) {
     console.error("Error fetching pull requests:", error);
@@ -136,7 +129,6 @@ async function fetchReviewsForPullRequest(
       return pullRequest;
     }
     
-    // Map reviews to our interface
     const reviews: Review[] = reviewsData.map((review: any) => ({
       id: review.id,
       user: {
@@ -150,13 +142,13 @@ async function fetchReviewsForPullRequest(
       html_url: review.html_url,
     }));
     
-    // Determine overall review status
-    const reviewStatus = determineReviewStatus(reviews);
+    const { status, reviewers } = determineReviewStatusWithReviewers(reviews);
     
     return {
       ...pullRequest,
       reviews,
-      review_status: reviewStatus,
+      review_status: status,
+      reviewers,
     };
   } catch (error) {
     console.error(`Error fetching reviews for PR #${pullRequest.number}:`, error);
@@ -164,13 +156,16 @@ async function fetchReviewsForPullRequest(
   }
 }
 
-function determineReviewStatus(reviews: Review[]): ReviewStatus {
+function determineReviewStatusWithReviewers(reviews: Review[]): { 
+  status: ReviewStatus; 
+  reviewers: { [key: string]: "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" } 
+} {
   if (reviews.length === 0) {
-    return "NONE";
+    return { status: "NONE", reviewers: {} };
   }
   
-  // Get most recent review from each user to determine latest state
   const userLatestReviews = new Map<number, Review>();
+  const reviewers: { [key: string]: "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" } = {};
   
   reviews.forEach(review => {
     const userId = review.user.id;
@@ -178,25 +173,32 @@ function determineReviewStatus(reviews: Review[]): ReviewStatus {
     
     if (!existingReview || new Date(review.submitted_at) > new Date(existingReview.submitted_at)) {
       userLatestReviews.set(userId, review);
+      
+      if (review.state === "APPROVED" || review.state === "CHANGES_REQUESTED" || review.state === "COMMENTED") {
+        reviewers[review.user.login] = review.state;
+      }
     }
   });
   
-  // Check if any latest review is requesting changes
   const latestReviews = Array.from(userLatestReviews.values());
   
   if (latestReviews.some(review => review.state === "CHANGES_REQUESTED")) {
-    return "CHANGES_REQUESTED";
+    return { status: "CHANGES_REQUESTED", reviewers };
   }
   
   if (latestReviews.some(review => review.state === "APPROVED")) {
-    return "APPROVED";
+    return { status: "APPROVED", reviewers };
   }
   
   if (latestReviews.some(review => review.state === "COMMENTED")) {
-    return "COMMENTED";
+    return { status: "COMMENTED", reviewers };
   }
   
-  return "NONE";
+  return { status: "NONE", reviewers };
+}
+
+function determineReviewStatus(reviews: Review[]): ReviewStatus {
+  return determineReviewStatusWithReviewers(reviews).status;
 }
 
 export function groupPullRequestsByRepository(pullRequests: PullRequest[]) {

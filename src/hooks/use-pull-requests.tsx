@@ -40,19 +40,16 @@ export function usePullRequests(
   const [readStatuses, setReadStatuses] = useState<Record<number, ReadStatus>>({});
   const [previousReadStatuses, setPreviousReadStatuses] = useState<Record<number, ReadStatus>>({});
   
-  // Load read statuses from localStorage on mount
   useEffect(() => {
     setReadStatuses(getReadStatusFromStorage());
   }, []);
   
-  // Filtered pull requests based on current filters
   const filteredPullRequests = pullRequests.filter(pr => 
     filteredUsers.includes(pr.user.login) && 
     (!showUnreadOnly || pr.has_new_activity) &&
     (showDrafts || !pr.draft)
   );
   
-  // Filtered repository and author groups
   const filteredRepositoryGroups = repositoryGroups.map(group => ({
     ...group,
     pullRequests: group.pullRequests.filter(pr => {
@@ -74,22 +71,18 @@ export function usePullRequests(
     }))
     .filter(group => group.pullRequests.length > 0);
   
-  // Get unique users from pull requests
   const uniqueUsers = Array.from(
     new Map(
       pullRequests.map(pr => [pr.user.login, pr.user])
     ).values()
   );
   
-  // Count of unread pull requests
   const unreadCount = filteredPullRequests.filter(pr => pr.has_new_activity).length;
   
-  // Function to undo read status changes
   const undoReadStatusChanges = useCallback(() => {
     setReadStatuses(previousReadStatuses);
     saveReadStatusToStorage(previousReadStatuses);
     
-    // Update the PullRequests in state with previous read status
     const updatedPullRequests = pullRequests.map(p => {
       const prevStatus = previousReadStatuses[p.id];
       if (prevStatus) {
@@ -108,7 +101,6 @@ export function usePullRequests(
     
     setPullRequests(updatedPullRequests);
     
-    // Update repository groups and author groups
     setRepositoryGroups(groupPullRequestsByRepository(
       sortPullRequests(updatedPullRequests, sorting)
     ));
@@ -134,7 +126,6 @@ export function usePullRequests(
     try {
       let prs = await fetchPullRequests(settings);
       
-      // Apply read status to pull requests
       prs = applyReadStatus(prs, readStatuses);
       setPullRequests(prs);
       
@@ -154,7 +145,6 @@ export function usePullRequests(
           description: "Try adding more users or check your organization name."
         });
       }
-      // Removed the toast for PR count as requested
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
@@ -168,15 +158,12 @@ export function usePullRequests(
     }
   }, [settings, sorting, readStatuses, toast]);
   
-  // Mark a single PR as read or unread (toggle)
   const handleMarkAsRead = useCallback((pr: PullRequest) => {
-    // Save current read statuses for undo functionality
     setPreviousReadStatuses(readStatuses);
     
     const updatedReadStatuses = togglePullRequestReadStatus(pr, readStatuses);
     setReadStatuses(updatedReadStatuses);
     
-    // Update the PullRequest in state
     const updatedPullRequests = pullRequests.map(p => {
       if (p.id === pr.id) {
         const isNowRead = !hasNewActivity(p, updatedReadStatuses[p.id]);
@@ -191,13 +178,11 @@ export function usePullRequests(
     
     setPullRequests(updatedPullRequests);
     
-    // Update repository groups
     const updatedRepoGroups = groupPullRequestsByRepository(
       sortPullRequests(updatedPullRequests, sorting)
     );
     setRepositoryGroups(updatedRepoGroups);
     
-    // Update author groups
     const updatedAuthorGroups = groupPullRequestsByAuthor(
       sortPullRequests(updatedPullRequests, sorting)
     );
@@ -214,21 +199,17 @@ export function usePullRequests(
     });
   }, [pullRequests, readStatuses, sorting, toast, undoReadStatusChanges]);
   
-  // Mark all filtered PRs as read
   const handleMarkAllAsRead = useCallback(() => {
-    // Save current read statuses for undo functionality
     setPreviousReadStatuses(readStatuses);
     
     let updatedReadStatuses = { ...readStatuses };
     
-    // Mark all filtered PRs as read
     filteredPullRequests.forEach(pr => {
       updatedReadStatuses = markPullRequestAsRead(pr, updatedReadStatuses, pr.comments_count);
     });
     
     setReadStatuses(updatedReadStatuses);
     
-    // Update the PullRequests in state
     const updatedPullRequests = pullRequests.map(p => {
       if (filteredUsers.includes(p.user.login)) {
         return {
@@ -242,7 +223,6 @@ export function usePullRequests(
     
     setPullRequests(updatedPullRequests);
     
-    // Update repository groups and author groups
     const updatedRepoGroups = groupPullRequestsByRepository(
       sortPullRequests(updatedPullRequests, sorting)
     );

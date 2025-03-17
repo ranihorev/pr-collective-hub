@@ -21,22 +21,75 @@ const DEFAULT_SETTINGS: GitHubSettingsType = {
   token: '',
 };
 
+// Get a value from localStorage with a default fallback
+const getStoredValue = <T,>(key: string, defaultValue: T): T => {
+  try {
+    const storedValue = localStorage.getItem(key);
+    return storedValue ? JSON.parse(storedValue) : defaultValue;
+  } catch (error) {
+    console.error(`Error retrieving ${key} from localStorage:`, error);
+    return defaultValue;
+  }
+};
+
+// Save a value to localStorage
+const saveToStorage = <T,>(key: string, value: T): void => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.error(`Error saving ${key} to localStorage:`, error);
+  }
+};
+
 const GitHubInbox: React.FC<GitHubInboxProps> = ({ 
   initialSettings = DEFAULT_SETTINGS 
 }) => {
   // Settings state
   const { settings, updateSettings } = useGitHubSettings(initialSettings);
   
-  // UI state
-  const [grouping, setGrouping] = useState<GroupingOption>('repository');
-  const [sorting, setSorting] = useState<SortingOption>('updated');
+  // UI state with localStorage persistence
+  const [grouping, setGrouping] = useState<GroupingOption>(
+    getStoredValue('github-inbox-grouping', 'repository')
+  );
+  const [sorting, setSorting] = useState<SortingOption>(
+    getStoredValue('github-inbox-sorting', 'updated')
+  );
   const [filteredUsers, setFilteredUsers] = useState<string[]>([]);
   const [showSettings, setShowSettings] = useState<boolean>(
     !settings.organization || !settings.token || settings.users.length === 0
   );
-  const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(true);
-  const [showDrafts, setShowDrafts] = useState<boolean>(false);
-  const [hideApproved, setHideApproved] = useState<boolean>(false);
+  
+  // Filter toggles with localStorage persistence
+  const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(
+    getStoredValue('github-inbox-show-unread-only', true)
+  );
+  const [showDrafts, setShowDrafts] = useState<boolean>(
+    getStoredValue('github-inbox-show-drafts', false)
+  );
+  const [hideApproved, setHideApproved] = useState<boolean>(
+    getStoredValue('github-inbox-hide-approved', false)
+  );
+  
+  // Save filter states to localStorage when they change
+  useEffect(() => {
+    saveToStorage('github-inbox-grouping', grouping);
+  }, [grouping]);
+  
+  useEffect(() => {
+    saveToStorage('github-inbox-sorting', sorting);
+  }, [sorting]);
+  
+  useEffect(() => {
+    saveToStorage('github-inbox-show-unread-only', showUnreadOnly);
+  }, [showUnreadOnly]);
+  
+  useEffect(() => {
+    saveToStorage('github-inbox-show-drafts', showDrafts);
+  }, [showDrafts]);
+  
+  useEffect(() => {
+    saveToStorage('github-inbox-hide-approved', hideApproved);
+  }, [hideApproved]);
   
   // Initialize filteredUsers from settings
   useEffect(() => {

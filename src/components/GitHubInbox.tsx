@@ -210,8 +210,10 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
               onCancel={() => setShowSettings(false)}
             />
           )}
-          
-          {filteredPullRequests.length > 0 && !showSettings && (
+        </header>
+        
+        {filteredPullRequests.length > 0 && !showSettings && (
+          <div className="sticky top-0 z-10 pt-4 pb-2 bg-background/95 backdrop-blur-sm">
             <GitHubFilters
               grouping={grouping}
               sorting={sorting}
@@ -224,16 +226,14 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
               onShowDraftsChange={setShowDrafts}
               onHideApprovedChange={setHideApproved}
             />
-          )}
-        </header>
-        
-        {filteredPullRequests.length > 0 && !showSettings && (
-          <div className="mb-6">
-            <UserFilters 
-              users={uniqueUsers}
-              selectedUsers={filteredUsers}
-              onChange={setFilteredUsers}
-            />
+            
+            <div>
+              <UserFilters 
+                users={uniqueUsers}
+                selectedUsers={filteredUsers}
+                onChange={setFilteredUsers}
+              />
+            </div>
           </div>
         )}
         

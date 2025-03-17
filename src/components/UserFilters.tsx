@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { GitHubUser } from '../lib/types';
 
@@ -22,12 +21,15 @@ const UserFilters: React.FC<UserFiltersProps> = ({
   };
   
   const handleSelectAll = () => {
-    if (selectedUsers.length === users.length) {
+    if (selectedUsers.length > 0) {
       onChange([]);
     } else {
       onChange(users.map(u => u.login));
     }
   };
+  
+  const allSelected = users.length > 0 && selectedUsers.length === users.length;
+  const someSelected = selectedUsers.length > 0 && selectedUsers.length < users.length;
   
   return (
     <div className="pb-4 mb-6 border-b border-border">
@@ -37,7 +39,7 @@ const UserFilters: React.FC<UserFiltersProps> = ({
           onClick={handleSelectAll}
           className="text-xs text-primary hover:underline focus:outline-none"
         >
-          {selectedUsers.length === users.length ? 'Clear All' : 'Select All'}
+          {selectedUsers.length > 0 ? 'Clear All' : 'Select All'}
         </button>
       </div>
       

@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { RepositoryGroup as RepoGroup, PullRequest } from '../lib/types';
 import PullRequestCard from './PullRequestCard';
-import { ChevronDown, ChevronUp, Github } from 'lucide-react';
+import { ChevronDown, ChevronUp, GitMerge } from 'lucide-react';
 
 interface RepositoryGroupProps {
   group: RepoGroup;
@@ -23,7 +23,7 @@ const RepositoryGroup: React.FC<RepositoryGroupProps> = ({
     <div className="mb-6 animate-slide-in stagger-item">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Github className="w-5 h-5 text-foreground/70" />
+          <GitMerge className="w-5 h-5 text-foreground/70" />
           <button
             onClick={() => setIsExpanded(!isExpanded)}
             className="flex items-center gap-2 font-medium text-lg hover:text-primary transition-colors focus:outline-none"

@@ -130,6 +130,30 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
   };
   
   const renderContent = () => {
+    if (grouping === 'repository') {
+      return (
+        <div className="space-y-6">
+          {filteredRepositoryGroups.map(group => (
+            <RepositoryGroup 
+              key={group.id} 
+              group={group} 
+              onMarkAsRead={handleMarkAsRead}
+            />
+          ))}
+        </div>
+      );
+    } else {
+      return (
+        <AuthorGroupList 
+          groups={filteredAuthorGroups} 
+          sorting={sorting}
+          onMarkAsRead={handleMarkAsRead}
+        />
+      );
+    }
+  };
+  
+  const renderEmptyState = () => {
     if (loading && filteredPullRequests.length === 0) {
       return <EmptyState type="loading" />;
     }
@@ -166,28 +190,11 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
       );
     }
     
-    if (grouping === 'repository') {
-      return (
-        <div className="space-y-6">
-          {filteredRepositoryGroups.map(group => (
-            <RepositoryGroup 
-              key={group.id} 
-              group={group} 
-              onMarkAsRead={handleMarkAsRead}
-            />
-          ))}
-        </div>
-      );
-    } else {
-      return (
-        <AuthorGroupList 
-          groups={filteredAuthorGroups} 
-          sorting={sorting}
-          onMarkAsRead={handleMarkAsRead}
-        />
-      );
-    }
+    return null;
   };
+  
+  // Check if we should display filters
+  const shouldShowFilters = !showSettings && settings.organization && settings.users.length > 0;
   
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -212,7 +219,7 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
           )}
         </header>
         
-        {filteredPullRequests.length > 0 && !showSettings && (
+        {shouldShowFilters && (
           <div className="sticky top-0 z-10 pt-4 pb-2 bg-background/95 backdrop-blur-sm">
             <GitHubFilters
               grouping={grouping}
@@ -238,7 +245,7 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
         )}
         
         <main className="pb-12">
-          {renderContent()}
+          {filteredPullRequests.length > 0 ? renderContent() : renderEmptyState()}
         </main>
       </div>
     </div>

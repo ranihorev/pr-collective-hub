@@ -6,7 +6,7 @@
 
 // GitHub OAuth configuration
 // These should be provided by the user after creating an OAuth app on GitHub
-const GITHUB_CLIENT_ID = "YOUR_GITHUB_CLIENT_ID"; // Replace with your GitHub OAuth app client ID
+const GITHUB_CLIENT_ID = "Ov23liuUfarqOWlXQjwA"; // Replace with your GitHub OAuth app client ID
 const GITHUB_REDIRECT_URI = window.location.origin; // Use the current origin as the redirect URI
 const GITHUB_SCOPE = "repo"; // Scope needed for repository access
 

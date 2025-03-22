@@ -102,7 +102,7 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
   );
   const [filteredUsers, setFilteredUsers] = useState<string[]>([]);
   const [showSettings, setShowSettings] = useState<boolean>(
-    !settings.organization || settings.users.length !== 0 || !getToken()
+    !settings.organization || !settings.users.length === 0 || !getToken()
   );
   
   // Filter toggles with localStorage persistence

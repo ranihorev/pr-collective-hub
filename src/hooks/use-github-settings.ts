@@ -1,11 +1,12 @@
 
 import { useState, useEffect } from 'react';
 import { GitHubSettings } from '@/lib/types';
+import { getToken, isAuthenticated } from '@/lib/githubOAuth';
 
 const DEFAULT_SETTINGS: GitHubSettings = {
   organization: '',
   users: [],
-  token: '',
+  token: '', // Will be filled from OAuth
 };
 
 export function useGitHubSettings(initialSettings: GitHubSettings = DEFAULT_SETTINGS) {
@@ -15,8 +16,21 @@ export function useGitHubSettings(initialSettings: GitHubSettings = DEFAULT_SETT
   useEffect(() => {
     try {
       const storedSettings = localStorage.getItem('github-inbox-settings');
+      const oauthToken = getToken();
+      
       if (storedSettings) {
-        setSettings(JSON.parse(storedSettings));
+        const parsedSettings = JSON.parse(storedSettings);
+        // Add the OAuth token to the settings
+        if (oauthToken) {
+          parsedSettings.token = oauthToken;
+        }
+        setSettings(parsedSettings);
+      } else if (oauthToken) {
+        // If we have an OAuth token but no settings, update the default settings
+        setSettings({
+          ...DEFAULT_SETTINGS,
+          token: oauthToken
+        });
       }
     } catch (error) {
       console.error('Error loading settings from localStorage:', error);
@@ -24,16 +38,25 @@ export function useGitHubSettings(initialSettings: GitHubSettings = DEFAULT_SETT
   }, []);
   
   const updateSettings = (newSettings: GitHubSettings) => {
-    // Ensure token is not empty
-    if (!newSettings.token) {
-      throw new Error('GitHub token is required');
-    }
+    // The OAuth token is managed separately, so we use the existing token
+    const oauthToken = getToken();
+    const settingsToSave = {
+      ...newSettings,
+      // Only use the token from settings if no OAuth token is available
+      token: oauthToken || newSettings.token
+    };
     
-    setSettings(newSettings);
+    setSettings(settingsToSave);
     
-    // Save to localStorage
+    // Save to localStorage (without the token)
     try {
-      localStorage.setItem('github-inbox-settings', JSON.stringify(newSettings));
+      const settingsForStorage = {
+        organization: settingsToSave.organization,
+        users: settingsToSave.users,
+        // Don't store the token in the settings object since it's managed by OAuth
+        token: ''
+      };
+      localStorage.setItem('github-inbox-settings', JSON.stringify(settingsForStorage));
     } catch (error) {
       console.error('Error saving settings to localStorage:', error);
     }

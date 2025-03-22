@@ -10,13 +10,6 @@ import AuthorGroupList from './AuthorGroupList';
 import GitHubSettings from './GitHubSettings';
 import GitHubHeader from './GitHubHeader';
 import GitHubFilters from './GitHubFilters';
-import { 
-  isOAuthCallback, 
-  handleOAuthCallback, 
-  parseQueryParams, 
-  getToken 
-} from '@/lib/githubOAuth';
-import { useToast } from '@/hooks/use-toast';
 
 interface GitHubInboxProps {
   initialSettings?: GitHubSettingsType;
@@ -51,45 +44,6 @@ const saveToStorage = <T,>(key: string, value: T): void => {
 const GitHubInbox: React.FC<GitHubInboxProps> = ({ 
   initialSettings = DEFAULT_SETTINGS 
 }) => {
-  const { toast } = useToast();
-  
-  // Handle OAuth callback if present
-  useEffect(() => {
-    const handleOAuth = async () => {
-      if (isOAuthCallback()) {
-        const params = parseQueryParams();
-        const code = params.get('code');
-        const state = params.get('state');
-        
-        if (code && state) {
-          try {
-            await handleOAuthCallback(code, state);
-            
-            // Clean up URL after successful OAuth
-            window.history.replaceState({}, document.title, window.location.pathname);
-            
-            toast({
-              title: "GitHub Authentication Successful",
-              description: "You've successfully connected to GitHub",
-            });
-            
-            // Refresh page to update authentication state
-            window.location.reload();
-          } catch (error) {
-            console.error('OAuth callback error:', error);
-            toast({
-              title: "Authentication Failed",
-              description: "Failed to authenticate with GitHub. Please try again.",
-              variant: "destructive"
-            });
-          }
-        }
-      }
-    };
-    
-    handleOAuth();
-  }, [toast]);
-  
   // Settings state
   const { settings, updateSettings } = useGitHubSettings(initialSettings);
   
@@ -102,7 +56,7 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
   );
   const [filteredUsers, setFilteredUsers] = useState<string[]>([]);
   const [showSettings, setShowSettings] = useState<boolean>(
-    !settings.organization || !settings.users.length === 0 || !getToken()
+    !settings.organization || !settings.token || settings.users.length === 0
   );
   
   // Filter toggles with localStorage persistence
@@ -166,12 +120,6 @@ const GitHubInbox: React.FC<GitHubInboxProps> = ({
   }, [settings, fetchData]);
   
   const handleSettingsSubmit = (newSettings: GitHubSettingsType) => {
-    // Ensure the token from OAuth is included
-    const oauthToken = getToken();
-    if (oauthToken) {
-      newSettings.token = oauthToken;
-    }
-    
     updateSettings(newSettings);
     setFilteredUsers(newSettings.users);
     setShowSettings(false);

@@ -66,7 +66,8 @@ export interface AuthorGroup {
 export interface GitHubSettings {
   organization: string;
   users: string[];
-  token: string; // Changed from optional to required
+  token: string;
+  currentUser?: string; // Added current user field
 }
 
 export type GroupingOption = "repository" | "author";

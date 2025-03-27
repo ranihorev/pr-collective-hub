@@ -6,6 +6,7 @@ const DEFAULT_SETTINGS: GitHubSettings = {
   organization: '',
   users: [],
   token: '',
+  currentUser: undefined,
 };
 
 export function useGitHubSettings(initialSettings: GitHubSettings = DEFAULT_SETTINGS) {

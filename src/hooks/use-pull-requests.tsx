@@ -131,7 +131,8 @@ export function usePullRequests(
     try {
       let prs = await fetchPullRequests(settings);
       
-      prs = applyReadStatus(prs, readStatuses);
+      // Apply read status and pass the current user
+      prs = applyReadStatus(prs, readStatuses, settings.currentUser);
       setPullRequests(prs);
       
       const repoGroups = groupPullRequestsByRepository(
@@ -171,7 +172,7 @@ export function usePullRequests(
     
     const updatedPullRequests = pullRequests.map(p => {
       if (p.id === pr.id) {
-        const isNowRead = !hasNewActivity(p, updatedReadStatuses[p.id]);
+        const isNowRead = !hasNewActivity(p, updatedReadStatuses[p.id], settings.currentUser);
         return {
           ...p,
           last_read_at: isNowRead ? new Date().toISOString() : null,
@@ -202,7 +203,7 @@ export function usePullRequests(
         </Button>
       )
     });
-  }, [pullRequests, readStatuses, sorting, toast, undoReadStatusChanges]);
+  }, [pullRequests, readStatuses, sorting, toast, undoReadStatusChanges, settings.currentUser]);
   
   const handleMarkAllAsRead = useCallback(() => {
     setPreviousReadStatuses(readStatuses);

@@ -20,6 +20,7 @@ const GitHubSettings: React.FC<GitHubSettingsProps> = ({
     const organization = formData.get('organization') as string;
     const usersText = formData.get('users') as string;
     const token = formData.get('token') as string;
+    const currentUser = formData.get('currentUser') as string;
     
     const users = usersText
       .split(',')
@@ -30,6 +31,7 @@ const GitHubSettings: React.FC<GitHubSettingsProps> = ({
       organization,
       users,
       token,
+      currentUser: currentUser || undefined,
     };
     
     onSubmit(newSettings);
@@ -69,6 +71,23 @@ const GitHubSettings: React.FC<GitHubSettingsProps> = ({
           />
           <p className="text-xs text-muted-foreground mt-1">
             Comma-separated list of GitHub usernames
+          </p>
+        </div>
+        
+        <div>
+          <label htmlFor="currentUser" className="block text-sm font-medium mb-1">
+            Your GitHub Username
+          </label>
+          <input
+            id="currentUser"
+            name="currentUser"
+            type="text"
+            defaultValue={settings.currentUser || ''}
+            placeholder="e.g., yourusername"
+            className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
+          />
+          <p className="text-xs text-muted-foreground mt-1">
+            PRs where your latest review is the last activity will be automatically marked as read
           </p>
         </div>
         

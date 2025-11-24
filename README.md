@@ -4,6 +4,34 @@
 
 **URL**: https://lovable.dev/projects/857aaa6c-6240-4d8c-846a-6cd230355493
 
+## GitHub Personal Access Token Setup
+
+This app requires a GitHub Personal Access Token to fetch pull requests from your organization.
+
+### Required Scopes
+
+- **For public repositories only:** `public_repo`
+- **For private repositories (recommended):** `repo` (full control of private repositories)
+
+### How to Create a Token
+
+1. Go to [GitHub Settings → Tokens](https://github.com/settings/tokens)
+2. Click "Generate new token" (classic)
+3. Give it a descriptive name (e.g., "PR Collective Hub")
+4. Select the `repo` scope (recommended) or `public_repo` for public repos only
+5. **For Enterprise Organizations:** Click "Configure SSO" next to the token after creation and authorize it for your organization
+6. Click "Generate token"
+7. Copy the token and paste it into the app's settings
+
+**Note:** The token is stored locally in your browser and is never sent to any server other than GitHub's API.
+
+### Enterprise Organization Setup
+
+If your organization uses SAML SSO or is part of an Enterprise account:
+1. After creating the token, you'll see an "Enable SSO" or "Configure SSO" button next to it
+2. Click the button and authorize the token for your specific organization(s)
+3. Without this authorization, the token won't have access to your organization's repositories
+
 ## How can I edit this code?
 
 There are several ways of editing your application.

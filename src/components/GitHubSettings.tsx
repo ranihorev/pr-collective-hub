@@ -112,9 +112,21 @@ const GitHubSettings: React.FC<GitHubSettingsProps> = ({
             placeholder="GitHub personal access token"
             className="w-full px-3 py-2 border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
-          <p className="text-xs text-muted-foreground mt-1">
-            A token is required and allows access to GitHub APIs with higher rate limits
-          </p>
+          <div className="mt-2 p-3 bg-muted/50 rounded-lg border border-border/50">
+            <p className="text-xs font-medium text-foreground mb-1">
+              Required token scopes:
+            </p>
+            <ul className="text-xs text-muted-foreground space-y-0.5 ml-4 list-disc">
+              <li><code className="bg-muted px-1 py-0.5 rounded">repo</code> - Full control (recommended for private repos)</li>
+              <li><code className="bg-muted px-1 py-0.5 rounded">public_repo</code> - Access to public repos only</li>
+            </ul>
+            <p className="text-xs text-muted-foreground mt-2">
+              <strong>Enterprise organizations:</strong> After creating the token, click "Configure SSO" to authorize it for your organization.
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Token is stored locally and never sent to any server other than GitHub's API
+            </p>
+          </div>
         </div>
         
         <div className="flex justify-end gap-3 pt-2">
